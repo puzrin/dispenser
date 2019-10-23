@@ -1,0 +1,14 @@
+{
+  "private": true,
+  "scripts": {
+    "build:fonts": "npm run build:font12 && npm run build:font14 && npm run build:font16",
+    "build:font12": "lv_font_conv --bpp 4 --size 12 --font ./node_modules/roboto-fontface/fonts/roboto/Roboto-Regular.woff --range 0x20-0x7F --symbols ³½¼ --format lvgl --no-compress --force-fast-kern-format -o ./src/fonts/my_font_roboto_12.c && sed -i 's/lvgl\\/lvgl[.]h/lvgl.h/g' ./src/fonts/my_font_roboto_12.c",
+    "build:font14": "lv_font_conv --bpp 4 --size 14 --font ./node_modules/roboto-fontface/fonts/roboto/Roboto-Regular.woff --range 0x20-0x7F --symbols ³½¼ --format lvgl --no-compress --force-fast-kern-format -o ./src/fonts/my_font_roboto_14.c && sed -i 's/lvgl\\/lvgl[.]h/lvgl.h/g' ./src/fonts/my_font_roboto_14.c",
+    "build:font16": "lv_font_conv --bpp 4 --size 16 --font ./node_modules/roboto-fontface/fonts/roboto/Roboto-Regular.woff --range 0x20-0x7F --symbols ³½¼ --format lvgl --no-compress --force-fast-kern-format -o ./src/fonts/my_font_roboto_16.c && sed -i 's/lvgl\\/lvgl[.]h/lvgl.h/g' ./src/fonts/my_font_roboto_16.c"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "lv_font_conv": "^0.2.0",
+    "roboto-fontface": "^0.10.0"
+  }
+}

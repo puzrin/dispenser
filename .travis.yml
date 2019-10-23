@@ -1,0 +1,21 @@
+dist: bionic
+language: python
+python:
+  - "3.6"
+cache:
+  directories:
+    - "~/.platformio"
+addons:
+  apt:
+    packages:
+      - libsdl2-dev
+#before_install:
+#  - sudo apt-get update
+#  - sudo apt-get install libsdl2-dev
+install:
+  - pip install -U platformio
+  - platformio update
+script:
+  - platformio test -e emulator
+  - platformio run -e emulator
+  - platformio run -e hardware

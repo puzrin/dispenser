@@ -1,0 +1,229 @@
+#include "app.h"
+#include "app_hal.h"
+#include "etl/debounce.h"
+
+#include "main.h"
+#include "adc.h"
+#include "spi.h"
+#include "tim.h"
+#include "gpio.h"
+
+#include "lvgl.h"
+
+extern "C" void SystemClock_Config(void);
+
+namespace hal {
+
+// Key debouncers, protect from jitter
+static etl::debounce<3> key_up, key_down, key_left, key_right, key_enter, key_start;
+
+static uint32_t kbd_last_key = 0;
+static lv_indev_state_t kbd_last_state;
+
+// Scan keys every 10ms.
+static void key_scan_task(lv_task_t * task)
+{
+        // Forwars button pins to debouncers
+        key_up.add_sample(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13));
+        key_left.add_sample(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_14));
+        key_down.add_sample(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_15));
+        key_right.add_sample(HAL_GPIO_ReadPin(GPIOF, GPIO_PIN_0));
+        key_enter.add_sample(HAL_GPIO_ReadPin(GPIOF, GPIO_PIN_1));
+        key_start.add_sample(HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8));
+
+        // Record data for indev reader the same way as in emulator.
+        // In theory, events should be queued, but currently LVGL allows only.
+        // single press/release event at each moment.
+        if (key_up.has_changed())
+        {
+            if (key_up.is_set()) { kbd_last_key = LV_KEY_UP; kbd_last_state = LV_INDEV_STATE_PR; }
+            else kbd_last_state = LV_INDEV_STATE_REL;
+        }
+        if (key_left.has_changed())
+        {
+            if (key_left.is_set()) { kbd_last_key = LV_KEY_LEFT; kbd_last_state = LV_INDEV_STATE_PR; }
+            else kbd_last_state = LV_INDEV_STATE_REL;
+        }
+        if (key_down.has_changed())
+        {
+            if (key_down.is_set()) { kbd_last_key = LV_KEY_DOWN; kbd_last_state = LV_INDEV_STATE_PR; }
+            else kbd_last_state = LV_INDEV_STATE_REL;
+        }
+        if (key_right.has_changed())
+        {
+            if (key_right.is_set()) { kbd_last_key = LV_KEY_RIGHT; kbd_last_state = LV_INDEV_STATE_PR; }
+            else kbd_last_state = LV_INDEV_STATE_REL;
+        }
+        if (key_enter.has_changed())
+        {
+            if (key_enter.is_set()) { kbd_last_key = LV_KEY_ENTER; kbd_last_state = LV_INDEV_STATE_PR; }
+            else kbd_last_state = LV_INDEV_STATE_REL;
+        }
+}
+
+static bool my_keyboard_read(lv_indev_drv_t * indev_drv, lv_indev_data_t * data)
+{
+    static int prev_state;
+    // Load prepared data
+    data->state = kbd_last_state;
+    data->key = kbd_last_key;
+
+    //---------------------------------------------------------
+    // HACK! Send release codes to group, to compensate lack of
+    // existing ones
+    //---------------------------------------------------------
+    if (app_data.group)
+    {
+        // Spy data & inject events before continue
+        if (data->state == LV_INDEV_STATE_REL && prev_state == LV_INDEV_STATE_PR)
+        {
+            lv_obj_t * selected = lv_group_get_focused(app_data.group);
+            if (selected)
+            {
+                lv_event_send(selected, HACK_EVENT_RELEASED, &data->key);
+            }
+        }
+    }
+
+    prev_state = data->state;
+
+    return false;
+}
+
+// State of "dispense" key.
+bool key_start_on()
+{
+    return key_start.is_set();
+}
+
+
+//
+// HiRes timer to create software PWM-s.
+//
+
+static void (*hires_timer_cb)(void) = NULL;
+
+void set_hires_timer_cb(void (*handler)(void))
+{
+    hires_timer_cb = handler;
+}
+
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+    if (htim->Instance == TIM7)
+    {
+        // HiRes (100 uS) timer
+        if (hires_timer_cb) hires_timer_cb();
+    }
+    else if (htim->Instance == TIM6)
+    {
+        // 1 mS timer
+        lv_tick_inc(1);
+    }
+}
+
+
+void setup(void)
+{
+    HAL_Init();
+    SystemClock_Config();
+
+    // Attach display buffer and display driver
+    static lv_disp_buf_t disp_buf;
+    static lv_color_t buf[LV_HOR_RES_MAX * 10];
+    lv_disp_buf_init(&disp_buf, buf, NULL, LV_HOR_RES_MAX * 10);
+
+    lv_disp_drv_t disp_drv;
+    lv_disp_drv_init(&disp_drv);
+    // TODO:
+    //disp_drv.flush_cb = monitor_flush;
+    disp_drv.buffer = &disp_buf;
+    lv_disp_drv_register(&disp_drv);
+
+    //
+    // Init keyboard
+    //
+
+    lv_indev_drv_t indev_drv;
+    lv_indev_drv_init(&indev_drv);
+    indev_drv.type = LV_INDEV_TYPE_KEYPAD;
+    indev_drv.read_cb = my_keyboard_read;
+
+    app_data.kbd = lv_indev_drv_register(&indev_drv);
+    lv_task_create(key_scan_task, 10, LV_TASK_PRIO_HIGHEST, NULL);
+
+    MX_GPIO_Init();
+    MX_SPI1_Init();
+    MX_ADC_Init();
+    MX_TIM7_Init();
+    MX_TIM6_Init();
+}
+
+//
+// Main loop
+//
+
+void loop(void)
+{
+    uint32_t tick_start = HAL_GetTick();
+
+    while(1) {
+        uint32_t tick_current = HAL_GetTick();
+
+        if (tick_current - tick_start >= 5)
+        {
+            // Call ~ every 5ms
+            tick_start = tick_current;
+        	lv_task_handler();
+        }
+    }
+}
+
+
+//
+// Set motor pins according to desired position. Everithing else
+// done in software
+//
+// 0, 1, 2, 3 - respond to desired rotor position in full step wave mode
+//
+
+void StepperIO::to(uint16_t phase)
+{
+    off(); // clrear previous
+
+    switch (phase & 0x3)
+    {
+        case 0:
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_SET);
+            break;
+        case 1:
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
+            break;
+        case 2:
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_SET);
+            break;
+        case 3:
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_SET);
+            break;
+    }
+}
+
+void StepperIO::off()
+{
+    HAL_GPIO_WritePin(
+        GPIOB,
+        GPIO_PIN_12 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15,
+        GPIO_PIN_RESET
+    );
+}
+
+
+// Enable/Disable LCD backlight
+void backlight(bool on)
+{
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, on ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+
+
+} // namespace
