@@ -1,39 +1,78 @@
 #include "app.h"
 #include "screen_flow.h"
+#include "etl/to_string.h"
 #include "etl/cyclic_value.h"
 
-typedef struct {
-    float speed_scale;
-    const char * title;
-} flow_scale_t;
+#include <stdio.h>
 
-flow_scale_t flow_scales[] = {
-    { .speed_scale = 0.25f, .title = "¼" },
-    { .speed_scale = 0.5f,  .title = "½" },
-    { .speed_scale = 1.0f,  .title = "Normal" },
-    { .speed_scale = 2.0f,  .title = "x2" },
-    { .speed_scale = 4.0f,  .title = "x4" },
-    { .speed_scale = 0.0f,  .title = "" }
-};
-
-
-static lv_obj_t * page;
+static lv_obj_t * cont;
 static bool destroyed = false;
 
-typedef struct {
-    lv_cont_ext_t cont;
-    float speed_scale;
-} menu_flow_item_ext_t;
+typedef struct _param_data {
+    void (* val_redraw_fn)(struct _param_data * data);
+    void (* val_update_fn)(struct _param_data * data, lv_event_t e, int key_code);
+    float * val_ref;
+    float min_value = 0.0f;
+    float max_value = 0.0f;
+    float min_step = 0.0f;
+    float max_step = 0.0f;
+    uint8_t precision = 1;
 
+    float step_scale = 0.0f;
+    float current_step = 0.0f;
+    uint16_t repeat_count = 0;
+    lv_obj_t * lbl_desc = NULL;
+    etl::string<15> buf = "";
+} param_data_t;
 
-static void group_style_mod_cb(lv_group_t * group, lv_style_t * style)
+void base_update_value_fn(param_data_t * data, lv_event_t e, int key_code)
 {
-    if (destroyed) return;
-    style->body.main_color = lv_color_mix(style->body.main_color, LV_COLOR_ORANGE, LV_OPA_40);
-    style->body.grad_color = lv_color_mix(style->body.grad_color, LV_COLOR_ORANGE, LV_OPA_40);
+    // lazy init for first run
+    if (data->current_step < data->min_step) data->current_step = data->min_step;
+    if (data->step_scale <= 0.0f) data->step_scale = 10.0f;
 
-    (void)group;
+    if (e == LV_EVENT_RELEASED)
+    {
+        data->repeat_count = 0;
+        data->current_step = data->min_step;
+        return;
+    }
+
+    data->repeat_count++;
+
+    if (data->repeat_count >= 10)
+    {
+        data->repeat_count = 0;
+        data->current_step = fmin(data->current_step * data->step_scale, data->max_step);
+    }
+
+    float val = *data->val_ref;
+
+    if (key_code == LV_KEY_RIGHT) val = fmin(val + data->current_step, data->max_value);
+    else val = fmax(val - data->current_step, data->min_value);
+
+    *data->val_ref = val;
+    data->val_redraw_fn(data);
 }
+
+static void base_redraw_fn(param_data_t * data)
+{
+    data->buf = "x";
+    etl::to_string(*data->val_ref, data->buf, etl::format_spec().precision(data->precision), true);
+    lv_label_set_text(data->lbl_desc, data->buf.c_str());
+}
+
+
+static param_data_t scale = {
+    .val_redraw_fn = &base_redraw_fn,
+    .val_update_fn = &base_update_value_fn,
+    .val_ref = &app_data.speed_scale,
+    .min_value = 0.1f,
+    .max_value = 9.9f,
+    .min_step = 0.1f,
+    .max_step = 1.0f,
+    .precision = 1
+};
 
 
 static void screen_flow_menu_item_cb(lv_obj_t * item, lv_event_t e)
@@ -47,7 +86,6 @@ static void screen_flow_menu_item_cb(lv_obj_t * item, lv_event_t e)
     }
 
     int key_code = lv_indev_get_key(app_data.kbd);
-    static etl::cyclic_value<uint8_t, 0, 1> skip_cnt;
 
     switch (e)
     {
@@ -56,22 +94,11 @@ static void screen_flow_menu_item_cb(lv_obj_t * item, lv_event_t e)
         case LV_EVENT_KEY:
             switch (key_code)
             {
-                case LV_KEY_UP:
-                    skip_cnt++;
-                    if (skip_cnt != 1) return;
-
-                    lv_group_focus_prev(app_data.group);
-                    // Scroll focused to visible area
-                    lv_page_focus(page, lv_group_get_focused(app_data.group), true);
-                    return;
-
-                case LV_KEY_DOWN:
-                    skip_cnt++;
-                    if (skip_cnt != 1) return;
-
-                    lv_group_focus_next(app_data.group);
-                    // Scroll focused to visible area
-                    lv_page_focus(page, lv_group_get_focused(app_data.group), true);
+                // Value change
+                case LV_KEY_LEFT:
+                case LV_KEY_RIGHT:
+                    scale.val_update_fn(&scale, e, key_code);
+                    app_update_settings();
                     return;
             }
             return;
@@ -98,7 +125,13 @@ static void screen_flow_menu_item_cb(lv_obj_t * item, lv_event_t e)
 
         // injected event from hacked driver
         case HACK_EVENT_RELEASED:
-            skip_cnt = 0;
+            switch (key_code)
+            {
+                case LV_KEY_LEFT:
+                case LV_KEY_RIGHT:
+                    scale.val_update_fn(&scale, LV_EVENT_RELEASED, key_code);
+                    return;
+            }
             return;
     }
 
@@ -106,111 +139,66 @@ static void screen_flow_menu_item_cb(lv_obj_t * item, lv_event_t e)
 }
 
 
-static void focus_cb(lv_group_t * group)
-{
-    if (destroyed) return;
-
-    menu_flow_item_ext_t * ext;
-    ext = (menu_flow_item_ext_t *)lv_obj_get_ext_attr(lv_group_get_focused(group));
-
-    if (app_data.speed_scale != ext->speed_scale)
-    {
-        app_data.speed_scale = ext->speed_scale;
-        app_update_settings();
-    }
-}
-
-
 void screen_flow_create()
 {
     lv_obj_t * screen = lv_scr_act();
 
-    lv_group_set_style_mod_cb(app_data.group, group_style_mod_cb);
-
     lv_obj_t * mode_label = lv_label_create(screen, NULL);
-    lv_label_set_text(mode_label, "mode: flow");
-    lv_obj_set_pos(mode_label, 1, 5);
+    lv_label_set_style(mode_label, LV_LABEL_STYLE_MAIN, &app_data.styles.header_icon);
+    lv_label_set_text(mode_label, U_ICON_FLOW);
+    lv_obj_set_pos(mode_label, 4, 4);
 
-    //
-    // Create list
-    //
 
-    page = lv_page_create(screen, NULL);
-    lv_page_set_anim_time(page, 150);
-    lv_page_set_style(page, LV_PAGE_STYLE_BG, &app_data.styles.main);
-    lv_page_set_style(page, LV_PAGE_STYLE_SCRL, &app_data.styles.main);
-    lv_page_set_sb_mode(page, LV_SB_MODE_OFF);
-    lv_page_set_scrl_layout(page, LV_LAYOUT_COL_L);
-    lv_obj_set_size(
-        page,
+    cont = lv_cont_create(screen, NULL);
+    lv_cont_set_style(cont, LV_CONT_STYLE_MAIN, &app_data.styles.main);
+    //lv_cont_set_layout(cont, LV_LAYOUT_COL_M);
+    lv_obj_set_pos(cont, 0, 50);
+    lv_obj_set_size(cont,
         lv_obj_get_width(screen),
         lv_obj_get_height(lv_scr_act()) - LIST_MARGIN_TOP
     );
-    lv_obj_set_pos(page, 0, LIST_MARGIN_TOP);
 
-    lv_obj_t * selected_item = NULL;
+    // Land events anywhere to process joystick
+    lv_obj_set_event_cb(cont, screen_flow_menu_item_cb);
+    lv_group_add_obj(app_data.group, cont);
 
-    for (int i=0;; i++)
-    {
-        flow_scale_t flow_scale = flow_scales[i];
+    // Title
+    lv_obj_t * lbl_title1 = lv_label_create(cont, NULL);
+    lv_label_set_text(lbl_title1, "Speed");
+    lv_obj_align(lbl_title1, NULL, LV_ALIGN_IN_TOP_MID, 0, 0);
 
-        if (flow_scale.speed_scale == 0) break;
+    lv_obj_t * lbl_title2 = lv_label_create(cont, NULL);
+    lv_label_set_text(lbl_title2, "scale");
+    lv_obj_align(lbl_title2, NULL, LV_ALIGN_IN_TOP_MID, 0, 18);
 
-        //
-        // Add container to accept navigation clicks
-        //
+    // Container with value and arrows
+    lv_obj_t * num_cont = lv_cont_create(cont, NULL);
+    lv_cont_set_style(num_cont, LV_CONT_STYLE_MAIN, &app_data.styles.flow_num);
+    lv_obj_set_size(num_cont, lv_obj_get_width(screen) - 8, 20);
+    lv_cont_set_layout(num_cont, LV_LAYOUT_OFF);
+    lv_obj_align(num_cont, NULL, LV_ALIGN_IN_TOP_MID, 0, 38);
 
-        lv_obj_t * item = lv_cont_create(page, NULL);
-        lv_cont_set_style(item, LV_CONT_STYLE_MAIN, &app_data.styles.main);
-        lv_cont_set_layout(item, LV_LAYOUT_OFF);
-        lv_cont_set_fit2(item, LV_FIT_NONE, LV_FIT_NONE);
-        lv_obj_set_size(item, lv_obj_get_width(page), 22);
-        lv_obj_set_event_cb(item, screen_flow_menu_item_cb);
-        lv_group_add_obj(app_data.group, item);
+    lv_obj_t * lbl_left = lv_label_create(num_cont, NULL);
+    //lv_cont_set_style(lbl_left, LV_CONT_STYLE_MAIN, &app_data.styles.flow_num);
+    lv_label_set_text(lbl_left, U_ICON_LEFT);
+    lv_obj_align(lbl_left, NULL, LV_ALIGN_IN_LEFT_MID, 0, -1);
 
-        //
-        // Add text
-        //
+    lv_obj_t * lbl_value = lv_label_create(num_cont, NULL);
+    //lv_cont_set_style(lbl_value, LV_CONT_STYLE_MAIN, &app_data.styles.flow_num);
+    scale.lbl_desc = lbl_value;
+    scale.val_redraw_fn(&scale);
 
-        lv_obj_t * lbl_title = lv_label_create(item, NULL);
-        lv_label_set_text(lbl_title, flow_scale.title);
-        lv_label_set_style(lbl_title, LV_LABEL_STYLE_MAIN, &app_data.styles.list_title);
-        lv_obj_set_pos(lbl_title, 1, 2);
-        lv_obj_align(lbl_title, NULL, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_align(lbl_value, NULL, LV_ALIGN_CENTER, 0, 0);
 
-        //
-        // Populate with extended data to simplify navigation
-        //
-        menu_flow_item_ext_t * ext = (menu_flow_item_ext_t *)lv_obj_allocate_ext_attr(
-            item,
-            sizeof(menu_flow_item_ext_t)
-        );
-        ext->speed_scale = flow_scale.speed_scale;
-
-        if (app_data.speed_scale == flow_scale.speed_scale) selected_item = item;
-    }
+    lv_obj_t * lbl_right = lv_label_create(num_cont, NULL);
+    //lv_cont_set_style(lbl_right, LV_CONT_STYLE_MAIN, &app_data.styles.flow_num);
+    lv_label_set_text(lbl_right, U_ICON_RIGHT);
+    lv_obj_align(lbl_right, NULL, LV_ALIGN_IN_RIGHT_MID, 0, -1);
 
     //
     // Sync data
     //
 
-    if (selected_item) {
-        lv_group_focus_obj(selected_item);
-
-        if (app_data.screen_flow_scroll_pos != INT16_MAX)
-        {
-            lv_obj_set_y(lv_page_get_scrl(page), app_data.screen_flow_scroll_pos);
-        }
-        else lv_page_focus(page, selected_item, LV_ANIM_OFF);
-    }
-    else
-    {
-        app_data.speed_scale = flow_scales[0].speed_scale;
-        app_update_settings();
-    }
-
-
-    lv_group_set_focus_cb(app_data.group, focus_cb);
     destroyed = false;
 }
 
@@ -219,7 +207,6 @@ void screen_flow_destroy()
 {
     if (destroyed) return;
     destroyed = true;
-    app_data.screen_flow_scroll_pos = lv_obj_get_y(lv_page_get_scrl(page));
     lv_group_set_focus_cb(app_data.group, NULL);
     lv_group_remove_all_objs(app_data.group);
     lv_obj_clean(lv_scr_act());

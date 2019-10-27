@@ -128,30 +128,48 @@ void app_mode_switch()
 
 static void create_styles()
 {
-    lv_style_copy(&app_data.styles.main, &lv_style_pretty);
-    app_data.styles.main.body.main_color = LV_COLOR_BLACK;
-    app_data.styles.main.body.grad_color = LV_COLOR_BLACK;
-    app_data.styles.main.body.radius = 0;
-    app_data.styles.main.body.border.width = 0;
-    app_data.styles.main.body.padding.bottom = 0;
-    app_data.styles.main.body.padding.left = 0;
-    app_data.styles.main.body.padding.right = 0;
-    app_data.styles.main.body.padding.top = 0;
-    app_data.styles.main.body.padding.inner = 0;
-    app_data.styles.main.text.color = LV_COLOR_WHITE;
-    app_data.styles.main.text.font = &my_font_roboto_12;
+    lv_style_t * s;
 
-    lv_style_copy(&app_data.styles.list_title, &app_data.styles.main);
-    //app_data.styles.list_title.text.font = &lv_font_roboto_16;
-    //app_data.styles.list_title.text.font = &my_font_roboto_14;
-    app_data.styles.list_title.text.font = &my_font_roboto_16;
+    s = &app_data.styles.main;
+    lv_style_copy(s, &lv_style_pretty);
+    s->body.main_color = LV_COLOR_BLACK;
+    s->body.grad_color = LV_COLOR_BLACK;
+    s->body.radius = 0;
+    s->body.border.width = 0;
+    s->body.padding.bottom = 0;
+    s->body.padding.left = 0;
+    s->body.padding.right = 0;
+    s->body.padding.top = 0;
+    s->body.padding.inner = 0;
+    s->text.color = LV_COLOR_WHITE;
+    s->text.font = &my_font_roboto_14;
 
-    lv_style_copy(&app_data.styles.list_desc, &app_data.styles.main);
-    app_data.styles.list_desc.text.color = LV_COLOR_MAKE(0xD0, 0xD0, 0xD0);
+    s = &app_data.styles.list;
+    lv_style_copy(s, &app_data.styles.main);
+    s->body.padding.inner = 1;
 
-    lv_style_copy(&app_data.styles.setting_desc, &app_data.styles.main);
-    app_data.styles.setting_desc.text.color = LV_COLOR_MAKE(0xB0, 0xB0, 0xB0);
-    app_data.styles.setting_desc.text.font = &my_font_roboto_14;
+    s = &app_data.styles.list_item;
+    lv_style_copy(s, &app_data.styles.main);
+    //s->body.padding.bottom = 10;
+
+    s = &app_data.styles.list_title;
+    lv_style_copy(s, &app_data.styles.main);
+    s->text.font = &my_font_roboto_14;
+
+    s = &app_data.styles.list_desc;
+    lv_style_copy(s, &app_data.styles.main);
+    s->text.font = &my_font_roboto_12;
+    s->text.color = COLOR_SECONDARY;
+
+    s = &app_data.styles.header_icon;
+    lv_style_copy(s, &app_data.styles.main);
+    s->text.font = &my_font_icons_18;
+    s->text.color = COLOR_SECONDARY;
+
+    s = &app_data.styles.flow_num;
+    lv_style_copy(s, &app_data.styles.main);
+    s->text.font = &my_font_roboto_num_18;
+    s->text.color = COLOR_SECONDARY;
 }
 
 

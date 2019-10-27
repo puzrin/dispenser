@@ -17,8 +17,8 @@ typedef struct {
 static void group_style_mod_cb(lv_group_t * group, lv_style_t * style)
 {
     if (destroyed) return;
-    style->body.main_color = lv_color_mix(style->body.main_color, LV_COLOR_ORANGE, LV_OPA_40);
-    style->body.grad_color = lv_color_mix(style->body.grad_color, LV_COLOR_ORANGE, LV_OPA_40);
+    style->body.main_color = COLOR_BG_HIGHLIGHT;
+    style->body.grad_color = COLOR_BG_HIGHLIGHT;
 
     (void)group;
 }
@@ -116,8 +116,9 @@ void screen_dose_create()
     lv_group_set_style_mod_cb(app_data.group, group_style_mod_cb);
 
     lv_obj_t * mode_label = lv_label_create(screen, NULL);
-    lv_label_set_text(mode_label, "mode: dose");
-    lv_obj_set_pos(mode_label, 1, 5);
+    lv_label_set_style(mode_label, LV_LABEL_STYLE_MAIN, &app_data.styles.header_icon);
+    lv_label_set_text(mode_label, U_ICON_DOSE);
+    lv_obj_set_pos(mode_label, 4, 4);
 
     //
     // Create list
@@ -125,8 +126,8 @@ void screen_dose_create()
 
     page = lv_page_create(screen, NULL);
     lv_page_set_anim_time(page, 150);
-    lv_page_set_style(page, LV_PAGE_STYLE_BG, &app_data.styles.main);
-    lv_page_set_style(page, LV_PAGE_STYLE_SCRL, &app_data.styles.main);
+    lv_page_set_style(page, LV_PAGE_STYLE_BG, &app_data.styles.list);
+    lv_page_set_style(page, LV_PAGE_STYLE_SCRL, &app_data.styles.list);
     lv_page_set_sb_mode(page, LV_SB_MODE_OFF);
     lv_page_set_scrl_layout(page, LV_LAYOUT_COL_L);
     lv_obj_set_size(
@@ -153,10 +154,10 @@ void screen_dose_create()
         //
 
         lv_obj_t * item = lv_cont_create(page, NULL);
-        lv_cont_set_style(item, LV_CONT_STYLE_MAIN, &app_data.styles.main);
+        lv_cont_set_style(item, LV_CONT_STYLE_MAIN, &app_data.styles.list_item);
         lv_cont_set_layout(item, LV_LAYOUT_OFF);
         lv_cont_set_fit2(item, LV_FIT_NONE, LV_FIT_NONE);
-        lv_obj_set_size(item, lv_obj_get_width(page), 36);
+        lv_obj_set_size(item, lv_obj_get_width(page), 37);
         lv_obj_set_event_cb(item, screen_dose_menu_item_cb);
         lv_group_add_obj(app_data.group, item);
 
@@ -167,12 +168,12 @@ void screen_dose_create()
         lv_obj_t * lbl_title = lv_label_create(item, NULL);
         lv_label_set_text(lbl_title, dose.title.c_str());
         lv_label_set_style(lbl_title, LV_LABEL_STYLE_MAIN, &app_data.styles.list_title);
-        lv_obj_set_pos(lbl_title, 1, 2);
+        lv_obj_set_pos(lbl_title, 4, 4);
 
         lv_obj_t * lbl_desc = lv_label_create(item, NULL);
         lv_label_set_text(lbl_desc, dose.desc);
         lv_label_set_style(lbl_desc, LV_LABEL_STYLE_MAIN, &app_data.styles.list_desc);
-        lv_obj_set_pos(lbl_desc, 1, 20);
+        lv_obj_set_pos(lbl_desc, 4, 19);
 
         //
         // Populate with extended data to simplify navigation

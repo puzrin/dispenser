@@ -126,7 +126,7 @@ static setting_data_t s_data_flux_percent = {
 
 static void move_pusher_text_update(setting_data_t * data)
 {
-    lv_label_set_text(data->lbl_desc, "<-    ->");
+    lv_label_set_text(data->lbl_desc, U_ICON_ARROWS);
 }
 
 void pusher_update_value_fn(setting_data_t * data, lv_event_t e, int key_code)
@@ -151,8 +151,8 @@ static bool destroyed = false;
 static void group_style_mod_cb(lv_group_t * group, lv_style_t * style)
 {
     if (destroyed) return;
-    style->body.main_color = lv_color_mix(style->body.main_color, LV_COLOR_ORANGE, LV_OPA_40);
-    style->body.grad_color = lv_color_mix(style->body.grad_color, LV_COLOR_ORANGE, LV_OPA_40);
+    style->body.main_color = COLOR_BG_HIGHLIGHT;
+    style->body.grad_color = COLOR_BG_HIGHLIGHT;
 
     (void)group;
 }
@@ -255,7 +255,7 @@ lv_obj_t * add_setting(setting_data_t * data)
     lv_cont_set_style(item, LV_CONT_STYLE_MAIN, &app_data.styles.main);
     lv_cont_set_layout(item, LV_LAYOUT_OFF);
     lv_cont_set_fit2(item, LV_FIT_NONE, LV_FIT_NONE);
-    lv_obj_set_size(item, lv_obj_get_width(page), 40);
+    lv_obj_set_size(item, lv_obj_get_width(page), 37);
     lv_obj_set_event_cb(item, screen_settings_menu_item_cb);
     lv_group_add_obj(app_data.group, item);
 
@@ -266,13 +266,13 @@ lv_obj_t * add_setting(setting_data_t * data)
     lv_obj_t * lbl_title = lv_label_create(item, NULL);
     lv_label_set_text(lbl_title, data->title);
     lv_label_set_style(lbl_title, LV_LABEL_STYLE_MAIN, &app_data.styles.list_title);
-    lv_obj_set_pos(lbl_title, 1, 2);
+    lv_obj_set_pos(lbl_title, 4, 4);
 
     lv_obj_t * lbl_desc = lv_label_create(item, NULL);
     data->lbl_desc = lbl_desc;
     data->val_redraw_fn(data);
-    lv_label_set_style(lbl_desc, LV_LABEL_STYLE_MAIN, &app_data.styles.setting_desc);
-    lv_obj_set_pos(lbl_desc, 1, 22);
+    lv_label_set_style(lbl_desc, LV_LABEL_STYLE_MAIN, &app_data.styles.list_desc);
+    lv_obj_set_pos(lbl_desc, 4, 19);
 
     return item;
 }
@@ -284,8 +284,9 @@ void screen_settings_create()
     lv_group_set_style_mod_cb(app_data.group, group_style_mod_cb);
 
     lv_obj_t * mode_label = lv_label_create(screen, NULL);
-    lv_label_set_text(mode_label, "Settings");
-    lv_obj_set_pos(mode_label, 1, 5);
+    lv_label_set_style(mode_label, LV_LABEL_STYLE_MAIN, &app_data.styles.header_icon);
+    lv_label_set_text(mode_label, U_ICON_SETTINGS);
+    lv_obj_set_pos(mode_label, 4, 4);
 
     //
     // Create list
@@ -293,8 +294,8 @@ void screen_settings_create()
 
     page = lv_page_create(screen, NULL);
     lv_page_set_anim_time(page, 150);
-    lv_page_set_style(page, LV_PAGE_STYLE_BG, &app_data.styles.main);
-    lv_page_set_style(page, LV_PAGE_STYLE_SCRL, &app_data.styles.main);
+    lv_page_set_style(page, LV_PAGE_STYLE_BG, &app_data.styles.list);
+    lv_page_set_style(page, LV_PAGE_STYLE_SCRL, &app_data.styles.list);
     lv_page_set_sb_mode(page, LV_SB_MODE_OFF);
     lv_page_set_scrl_layout(page, LV_LAYOUT_COL_L);
     lv_obj_set_size(
