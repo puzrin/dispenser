@@ -1,7 +1,8 @@
 SMT solder paste and flux dispenser
 ===================================
 
-[![Build Status](https://travis-ci.org/puzrin/dispenser.svg?branch=dev)](https://travis-ci.org/puzrin/dispenser)
+[![Build Status](https://travis-ci.org/puzrin/dispenser.svg)](https://travis-ci.org/puzrin/dispenser)
+[![Gitter](https://badges.gitter.im/paste_dispenser/community.svg)](https://gitter.im/paste_dispenser/community)
 
 **WIP**
 
@@ -16,3 +17,12 @@ Schematic & PCB:
 
 Project page on [hackaday.io](https://hackaday.io/project/166699-solder-paste-and-flux-dispenser).
 See progress and other tips in build logs.
+
+
+## Build & usage
+
+- [Assembly guide](doc/assembly.md)
+- [User manual](doc/manual.md)
+
+If you plan to develop new features or create fixes - see
+[Devolopment notes](doc/development.md).
