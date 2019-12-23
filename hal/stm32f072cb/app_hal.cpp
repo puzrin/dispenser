@@ -7,8 +7,10 @@
 #include "spi.h"
 #include "tim.h"
 #include "gpio.h"
+#include "dma.h"
 
 #include "lvgl.h"
+#include "st7735.h"
 
 extern "C" void SystemClock_Config(void);
 
@@ -19,6 +21,8 @@ static etl::debounce<3> key_up, key_down, key_left, key_right, key_enter, key_st
 
 static uint32_t kbd_last_key = 0;
 static lv_indev_state_t kbd_last_state;
+
+static lv_disp_drv_t disp_drv;
 
 // Scan keys every 10ms.
 static void key_scan_task(lv_task_t * task)
@@ -109,36 +113,27 @@ void set_hires_timer_cb(void (*handler)(void))
 }
 
 
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-    if (htim->Instance == TIM7)
-    {
-        // HiRes (100 uS) timer
-        if (hires_timer_cb) hires_timer_cb();
-    }
-    else if (htim->Instance == TIM6)
-    {
-        // 1 mS timer
-        lv_tick_inc(1);
-    }
-}
-
-
 void setup(void)
 {
     HAL_Init();
     SystemClock_Config();
+
+    MX_GPIO_Init();
+    MX_DMA_Init();
+    MX_SPI1_Init();
 
     // Attach display buffer and display driver
     static lv_disp_buf_t disp_buf;
     static lv_color_t buf[LV_HOR_RES_MAX * 10];
     lv_disp_buf_init(&disp_buf, buf, NULL, LV_HOR_RES_MAX * 10);
 
-    lv_disp_drv_t disp_drv;
     lv_disp_drv_init(&disp_drv);
-    // TODO:
-    //disp_drv.flush_cb = monitor_flush;
+
+    disp_drv.flush_cb = ST7735_flush_cb;
     disp_drv.buffer = &disp_buf;
+
+    ST7735_Init(&hspi1, &disp_drv);
+
     lv_disp_drv_register(&disp_drv);
 
     //
@@ -153,8 +148,6 @@ void setup(void)
     app_data.kbd = lv_indev_drv_register(&indev_drv);
     lv_task_create(key_scan_task, 10, LV_TASK_PRIO_HIGHEST, NULL);
 
-    MX_GPIO_Init();
-    MX_SPI1_Init();
     MX_ADC_Init();
     MX_TIM7_Init();
     MX_TIM6_Init();
@@ -227,3 +220,17 @@ void backlight(bool on)
 
 
 } // namespace
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+    if (htim->Instance == TIM7)
+    {
+        // HiRes (100 uS) timer
+        if (hal::hires_timer_cb) hal::hires_timer_cb();
+    }
+    else if (htim->Instance == TIM6)
+    {
+        // 1 mS timer
+        lv_tick_inc(1);
+    }
+}
