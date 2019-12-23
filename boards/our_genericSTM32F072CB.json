@@ -1,0 +1,35 @@
+{
+  "build": {
+    "cpu": "cortex-m0",
+    "extra_flags": "-DSTM32F072xB",
+    "f_cpu": "48000000L",
+    "mcu": "stm32f072cbt6"
+  },
+  "debug": {
+    "jlink_device": "STM32F072CB",
+    "openocd_target": "stm32f0x",
+    "svd_path": "STM32F072x.svd"
+  },
+  "frameworks": [
+    "arduino",
+    "mbed",
+    "stm32cube"
+  ],
+  "name": "STM32F072CB",
+  "upload": {
+    "maximum_ram_size": 16384,
+    "maximum_size": 131072,
+    "protocol": "stlink",
+    "protocols": [
+      "jlink",
+      "stlink",
+      "blackmagic",
+      "dfu"
+    ],
+    "require_upload_port": true,
+    "use_1200bps_touch": false,
+    "wait_for_upload_port": false
+  },
+  "url": "https://www.st.com/content/st_com/en/products/microcontrollers-microprocessors/stm32-32-bit-arm-cortex-mcus/stm32-mainstream-mcus/stm32f0-series/stm32f0x2/stm32f072cb.html",
+  "vendor": "Generic"
+}
