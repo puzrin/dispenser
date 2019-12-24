@@ -18,4 +18,4 @@ install:
 script:
   - platformio test -e emulator
   - platformio run -e emulator
-  - platformio run -e hardware
+  - platformio run -e hardware_usb
