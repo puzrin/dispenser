@@ -28,12 +28,12 @@ static lv_disp_drv_t disp_drv;
 static void key_scan_task(lv_task_t * task)
 {
         // Forwars button pins to debouncers
-        key_up.add_sample(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13));
-        key_left.add_sample(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_14));
-        key_down.add_sample(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_15));
-        key_right.add_sample(HAL_GPIO_ReadPin(GPIOF, GPIO_PIN_0));
-        key_enter.add_sample(HAL_GPIO_ReadPin(GPIOF, GPIO_PIN_1));
-        key_start.add_sample(HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8));
+        key_down.add(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13));
+        key_up.add(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_15));
+        key_right.add(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_14));
+        key_left.add(HAL_GPIO_ReadPin(GPIOF, GPIO_PIN_0));
+        key_enter.add(HAL_GPIO_ReadPin(GPIOF, GPIO_PIN_1));
+        key_start.add(HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8));
 
         // Record data for indev reader the same way as in emulator.
         // In theory, events should be queued, but currently LVGL allows only.
@@ -151,6 +151,9 @@ void setup(void)
     MX_ADC_Init();
     MX_TIM7_Init();
     MX_TIM6_Init();
+
+    HAL_TIM_Base_Start_IT(&htim6);
+    HAL_TIM_Base_Start_IT(&htim7);
 }
 
 //
