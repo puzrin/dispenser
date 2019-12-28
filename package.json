@@ -1,12 +1,7 @@
 {
   "private": true,
   "scripts": {
-    "build:fonts": "npm run build:icons && npm run build:font12 && npm run build:font14 && npm run build:font_num_18 && npm run build:font_icons_18",
-    "build:icons": "./support/build_icons.js && svg2ttf --ts 0 ./support/icons.svg ./support/icons.ttf && shx rm -rf ./support/icons.svg",
-    "build:font12": "lv_font_conv --bpp 4 --size 12 --lcd --font ./node_modules/roboto-fontface/fonts/roboto/Roboto-Medium.woff --range 0x20-0x7F --symbols ³ --font ./support/icons.ttf --range 0xE006 --format lvgl --no-compress --force-fast-kern-format -o ./src/fonts/my_font_roboto_12.c && sed -i 's/lvgl\\/lvgl[.]h/lvgl.h/g' ./src/fonts/my_font_roboto_12.c",
-    "build:font14": "lv_font_conv --bpp 4 --size 14 --lcd --font ./node_modules/roboto-fontface/fonts/roboto/Roboto-Medium.woff --range 0x20-0x7F --symbols ³ --font ./support/icons.ttf --range 0xE006 --format lvgl --no-compress --force-fast-kern-format -o ./src/fonts/my_font_roboto_14.c && sed -i 's/lvgl\\/lvgl[.]h/lvgl.h/g' ./src/fonts/my_font_roboto_14.c",
-    "build:font_num_18": "lv_font_conv --bpp 4 --size 18 --lcd --font ./node_modules/roboto-fontface/fonts/roboto/Roboto-Medium.woff --symbols 0123456789. --font ./support/icons.ttf --range 0xE003,0xE004 --range '0xE005=>0x78' --format lvgl --no-compress --force-fast-kern-format -o ./src/fonts/my_font_roboto_num_18.c && sed -i 's/lvgl\\/lvgl[.]h/lvgl.h/g' ./src/fonts/my_font_roboto_num_18.c",
-    "build:font_icons_18": "lv_font_conv --bpp 4 --size 18 --lcd --font ./support/icons.ttf --range 0xE000,0xE001,0xE002 --format lvgl --no-compress --force-fast-kern-format -o ./src/fonts/my_font_icons_18.c && sed -i 's/lvgl\\/lvgl[.]h/lvgl.h/g' ./src/fonts/my_font_icons_18.c"
+    "build:fonts": "./support/build_icons.js && svg2ttf --ts 0 ./support/icons.svg ./support/icons.ttf && shx rm -rf ./support/icons.svg && ./support/build_fonts.js nocompress"
   },
   "license": "MIT",
   "devDependencies": {
