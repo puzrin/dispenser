@@ -1,1 +1,1 @@
-#include "etl/profiles/etl_profile.h"
+#include "etl/profiles/auto.h"
