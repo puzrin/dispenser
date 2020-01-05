@@ -5,7 +5,7 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "lv_font_conv": "littlevgl/lv_font_conv#26040af",
+    "lv_font_conv": "^0.4.2",
     "roboto-fontface": "^0.10.0",
     "shx": "^0.3.2",
     "svg2ttf": "^4.3.0",

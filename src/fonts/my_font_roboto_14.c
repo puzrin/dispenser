@@ -3,7 +3,7 @@
 /*******************************************************************************
  * Size: 14 px
  * Bpp: 4
- * Opts: --bpp 4 --size 14 --lcd --font ./node_modules/roboto-fontface/fonts/roboto/Roboto-Medium.woff --range 0x20-0x7F --symbols ³ --font ./support/icons.ttf --range 0xE006 --format lvgl --no-compress --force-fast-kern-format -o ./src/fonts/my_font_roboto_14.c
+ * Opts: --bpp 4 --no-compress --lcd --format lvgl --lv-include lvgl.h --force-fast-kern-format --size 14 --font ../node_modules/roboto-fontface/fonts/roboto/Roboto-Medium.woff --range 0x20-0x7F --symbols ³ --font icons.ttf --range 0xE006 -o ../src/fonts/my_font_roboto_14.c
  ******************************************************************************/
 
 #ifndef MY_FONT_ROBOTO_14
@@ -2063,7 +2063,9 @@ lv_font_t my_font_roboto_14 = {
     .get_glyph_bitmap = lv_font_get_bitmap_fmt_txt,    /*Function pointer to get glyph's bitmap*/
     .line_height = 17,          /*The maximum line height required by the font*/
     .base_line = 4,             /*Baseline measured from the bottom of the line*/
+#if !(LVGL_VERSION_MAJOR == 6 && LVGL_VERSION_MINOR == 0)
     .subpx = LV_FONT_SUBPX_HOR,
+#endif
     .dsc = &font_dsc           /*The custom font data. Will be accessed by `get_glyph_bitmap/dsc` */
 };
 

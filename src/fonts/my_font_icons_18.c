@@ -3,7 +3,7 @@
 /*******************************************************************************
  * Size: 18 px
  * Bpp: 4
- * Opts: --bpp 4 --size 18 --lcd --font ./support/icons.ttf --range 0xE000,0xE001,0xE002 --format lvgl --no-compress --force-fast-kern-format -o ./src/fonts/my_font_icons_18.c
+ * Opts: --bpp 4 --no-compress --lcd --format lvgl --lv-include lvgl.h --force-fast-kern-format --size 18 --font icons.ttf --range 0xE000,0xE001,0xE002 -o ../src/fonts/my_font_icons_18.c
  ******************************************************************************/
 
 #ifndef MY_FONT_ICONS_18
@@ -252,7 +252,9 @@ lv_font_t my_font_icons_18 = {
     .get_glyph_bitmap = lv_font_get_bitmap_fmt_txt,    /*Function pointer to get glyph's bitmap*/
     .line_height = 17,          /*The maximum line height required by the font*/
     .base_line = 4,             /*Baseline measured from the bottom of the line*/
+#if !(LVGL_VERSION_MAJOR == 6 && LVGL_VERSION_MINOR == 0)
     .subpx = LV_FONT_SUBPX_HOR,
+#endif
     .dsc = &font_dsc           /*The custom font data. Will be accessed by `get_glyph_bitmap/dsc` */
 };
 
