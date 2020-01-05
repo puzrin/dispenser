@@ -3,6 +3,8 @@
 #include "etl/to_string.h"
 #include "etl/cyclic_value.h"
 
+#define MAX_DESC_LEN 10
+
 enum setting_type {
     TYPE_NEEDLE_DIA = 0,
     TYPE_SYRINGE_DIA = 1,
@@ -11,62 +13,70 @@ enum setting_type {
     TYPE_MOVE_PUSHER = 4
 };
 
-typedef struct _setting_data {
-    enum setting_type type;
-    const char * title;
-    void (* val_redraw_fn)(struct _setting_data * data);
-    void (* val_update_fn)(struct _setting_data * data, lv_event_t e, int key_code);
-    float * val_ref;
-    float min_value = 0.0f;
-    float max_value = 0.0f;
-    float min_step = 0.0f;
-    float max_step = 0.0f;
-    uint8_t precision = 1;
-    const char * suffix = "";
+typedef struct {
     float step_scale = 0.0f;
     float current_step = 0.0f;
     uint16_t repeat_count = 0;
     lv_obj_t * lbl_desc = NULL;
-    etl::string<15> buf = "";
+    char buf[MAX_DESC_LEN];
+} setting_data_state_t;
+
+typedef struct _setting_data {
+    enum setting_type const type;
+    const char * const title;
+    void (* const val_redraw_fn)(const struct _setting_data * data);
+    void (* const val_update_fn)(const struct _setting_data * data, lv_event_t e, int const key_code);
+    float * const val_ref;
+    const float min_value = 0.0f;
+    const float max_value = 0.0f;
+    const float min_step = 0.0f;
+    const float max_step = 0.0f;
+    const uint8_t precision = 1;
+    const char * const suffix = "";
+    setting_data_state_t * const s;
 } setting_data_t;
 
-void base_update_value_fn(setting_data_t * data, lv_event_t e, int key_code)
+void base_update_value_fn(const setting_data_t * data, lv_event_t e, int key_code)
 {
     // lazy init for first run
-    if (data->current_step < data->min_step) data->current_step = data->min_step;
-    if (data->step_scale <= 0.0f) data->step_scale = 10.0f;
+    if (data->s->current_step < data->min_step) data->s->current_step = data->min_step;
+    if (data->s->step_scale <= 0.0f) data->s->step_scale = 10.0f;
 
     if (e == LV_EVENT_RELEASED)
     {
-        data->repeat_count = 0;
-        data->current_step = data->min_step;
+        data->s->repeat_count = 0;
+        data->s->current_step = data->min_step;
         return;
     }
 
-    data->repeat_count++;
+    data->s->repeat_count++;
 
-    if (data->repeat_count >= 10)
+    if (data->s->repeat_count >= 10)
     {
-        data->repeat_count = 0;
-        data->current_step = fmin(data->current_step * data->step_scale, data->max_step);
+        data->s->repeat_count = 0;
+        data->s->current_step = fmin(data->s->current_step * data->s->step_scale, data->max_step);
     }
 
     float val = *data->val_ref;
 
-    if (key_code == LV_KEY_RIGHT) val = fmin(val + data->current_step, data->max_value);
-    else val = fmax(val - data->current_step, data->min_value);
+    if (key_code == LV_KEY_RIGHT) val = fmin(val + data->s->current_step, data->max_value);
+    else val = fmax(val - data->s->current_step, data->min_value);
 
     *data->val_ref = val;
     data->val_redraw_fn(data);
 }
 
-static void base_redraw_fn(setting_data_t * data)
+static void base_redraw_fn(const setting_data_t * data)
 {
-    etl::to_string(*data->val_ref, data->buf, etl::format_spec().precision(data->precision));
-    data->buf += data->suffix;
-    lv_label_set_text(data->lbl_desc, data->buf.c_str());
+    etl::string<MAX_DESC_LEN-1> tmp;
+    etl::to_string(*data->val_ref, tmp, etl::format_spec().precision(data->precision));
+    tmp += data->suffix;
+    strcpy(data->s->buf, tmp.c_str());
+    lv_label_set_text(data->s->lbl_desc, data->s->buf);
 }
 
+
+/*static setting_data_state_t s_data_needle_state = {};
 
 static setting_data_t s_data_needle = {
     .type = TYPE_NEEDLE_DIA,
@@ -79,10 +89,14 @@ static setting_data_t s_data_needle = {
     .min_step = 0.1f,
     .max_step = 0.1f,
     .precision = 1,
-    .suffix = " mm"
-};
+    .suffix = " mm",
+    .s = &s_data_needle_state
+};*/
 
-static setting_data_t s_data_syringe = {
+
+static setting_data_state_t s_data_syringe_state = {};
+
+static const setting_data_t s_data_syringe = {
     .type = TYPE_SYRINGE_DIA,
     .title = "Syringe dia",
     .val_redraw_fn = &base_redraw_fn,
@@ -93,10 +107,14 @@ static setting_data_t s_data_syringe = {
     .min_step = 0.1f,
     .max_step = 1.0f,
     .precision = 1,
-    .suffix = " mm"
+    .suffix = " mm",
+    .s = &s_data_syringe_state
 };
 
-static setting_data_t s_data_viscosity = {
+
+static setting_data_state_t s_data_viscosity_state = {};
+
+static const setting_data_t s_data_viscosity = {
     .type = TYPE_VISCOSITY,
     .title = "Viscosity",
     .val_redraw_fn = &base_redraw_fn,
@@ -107,10 +125,14 @@ static setting_data_t s_data_viscosity = {
     .min_step = 1.0f,
     .max_step = 100.0f,
     .precision = 1,
-    .suffix = " P"
+    .suffix = " P",
+    .s = &s_data_viscosity_state
 };
 
-static setting_data_t s_data_flux_percent = {
+
+static setting_data_state_t s_data_flux_percent_state = {};
+
+static const setting_data_t s_data_flux_percent = {
     .type = TYPE_FLUX_PERCENT,
     .title = "Flux part",
     .val_redraw_fn = &base_redraw_fn,
@@ -121,26 +143,37 @@ static setting_data_t s_data_flux_percent = {
     .min_step = 1.0f,
     .max_step = 3.0f,
     .precision = 0,
-    .suffix = "%"
+    .suffix = "%",
+    .s = &s_data_flux_percent_state
 };
 
-static void move_pusher_text_update(setting_data_t * data)
+static void move_pusher_text_update(const setting_data_t * data)
 {
-    lv_label_set_text(data->lbl_desc, U_ICON_ARROWS);
+    lv_label_set_text(data->s->lbl_desc, U_ICON_ARROWS);
 }
 
-void pusher_update_value_fn(setting_data_t * data, lv_event_t e, int key_code)
+static void pusher_update_value_fn(const setting_data_t * data, lv_event_t e, int key_code)
 {
     // TODO run motor in specified direction
     (void)data; (void)e; (void) key_code;
 }
 
-static setting_data_t s_data_move_pusher = {
+
+static setting_data_state_t s_data_move_pusher_state = {};
+
+static const setting_data_t s_data_move_pusher = {
     .type = TYPE_MOVE_PUSHER,
     .title = "Fast move",
     .val_redraw_fn = &move_pusher_text_update,
     .val_update_fn = &pusher_update_value_fn,
-    .val_ref = NULL
+    .val_ref = NULL,
+    .min_value = 0.0f,
+    .max_value = 0.0f,
+    .min_step = 0.0f,
+    .max_step = 0.0f,
+    .precision = 0,
+    .suffix = "",
+    .s = &s_data_move_pusher_state
 };
 
 
@@ -170,7 +203,7 @@ static void screen_settings_menu_item_cb(lv_obj_t * item, lv_event_t e)
 
     int key_code = lv_indev_get_key(app_data.kbd);
     static etl::cyclic_value<uint8_t, 0, 1> skip_cnt;
-    setting_data_t * s_data = (setting_data_t *)lv_obj_get_user_data(item);
+    auto * s_data = reinterpret_cast<const setting_data_t *>(lv_obj_get_user_data(item));
 
     switch (e)
     {
@@ -244,14 +277,14 @@ static void screen_settings_menu_item_cb(lv_obj_t * item, lv_event_t e)
 }
 
 
-lv_obj_t * add_setting(setting_data_t * data)
+lv_obj_t * add_setting(const setting_data_t * data)
 {
     //
     // Create container & attach user data
     //
 
     lv_obj_t * item = lv_cont_create(page, NULL);
-    lv_obj_set_user_data(item, data);
+    lv_obj_set_user_data(item, const_cast<setting_data_t *>(data));
     lv_cont_set_style(item, LV_CONT_STYLE_MAIN, &app_data.styles.main);
     lv_cont_set_layout(item, LV_LAYOUT_OFF);
     lv_cont_set_fit2(item, LV_FIT_NONE, LV_FIT_NONE);
@@ -269,7 +302,7 @@ lv_obj_t * add_setting(setting_data_t * data)
     lv_obj_set_pos(lbl_title, 4, 4);
 
     lv_obj_t * lbl_desc = lv_label_create(item, NULL);
-    data->lbl_desc = lbl_desc;
+    data->s->lbl_desc = lbl_desc;
     data->val_redraw_fn(data);
     lv_label_set_style(lbl_desc, LV_LABEL_STYLE_MAIN, &app_data.styles.list_desc);
     lv_obj_set_pos(lbl_desc, 4, 19);
@@ -308,8 +341,9 @@ void screen_settings_create()
     lv_obj_t * selected_item = NULL;
     uint8_t selected_id = (uint8_t)app_data.screen_settings_selected_id;
 
-    setting_data_t * s_data_list[] = {
+    const setting_data_t * s_data_list[] = {
         &s_data_syringe,
+        //&s_data_needle,
         &s_data_viscosity,
         &s_data_flux_percent,
         &s_data_move_pusher,
@@ -318,7 +352,7 @@ void screen_settings_create()
 
     for (uint8_t i = 0; s_data_list[i] != NULL; i++)
     {
-        setting_data_t * s_data = s_data_list[i];
+        auto * s_data = s_data_list[i];
         lv_obj_t * item = add_setting(s_data);
         if (s_data->type == selected_id) selected_item = item;
     }
@@ -347,9 +381,9 @@ void screen_settings_destroy()
     destroyed = true;
 
     app_data.screen_settings_scroll_pos = lv_obj_get_y(lv_page_get_scrl(page));
-    setting_data_t * s_data = (setting_data_t *)lv_obj_get_user_data(
+    auto * s_data = reinterpret_cast<const setting_data_t *>(lv_obj_get_user_data(
         lv_group_get_focused(app_data.group)
-    );
+    ));
     app_data.screen_settings_selected_id = s_data->type;
 
     lv_group_set_focus_cb(app_data.group, NULL);

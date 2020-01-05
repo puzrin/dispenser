@@ -8,62 +8,67 @@
 static lv_obj_t * cont;
 static bool destroyed = false;
 
-typedef struct _param_data {
-    void (* val_redraw_fn)(struct _param_data * data);
-    void (* val_update_fn)(struct _param_data * data, lv_event_t e, int key_code);
-    float * val_ref;
-    float min_value = 0.0f;
-    float max_value = 0.0f;
-    float min_step = 0.0f;
-    float max_step = 0.0f;
-    uint8_t precision = 1;
-
+typedef struct {
     float step_scale = 0.0f;
     float current_step = 0.0f;
     uint16_t repeat_count = 0;
     lv_obj_t * lbl_desc = NULL;
-    etl::string<15> buf = "";
+    etl::string<10> buf = "";
+} param_data_state_t;
+
+typedef struct _param_data {
+    void (* const val_redraw_fn)(const struct _param_data * data);
+    void (* const val_update_fn)(const struct _param_data * data, lv_event_t e, int key_code);
+    float * const val_ref;
+    const float min_value = 0.0f;
+    const float max_value = 0.0f;
+    const float min_step = 0.0f;
+    const float max_step = 0.0f;
+    const uint8_t precision = 1;
+
+    param_data_state_t * const s;
 } param_data_t;
 
-void base_update_value_fn(param_data_t * data, lv_event_t e, int key_code)
+void base_update_value_fn(const param_data_t * data, lv_event_t e, int key_code)
 {
     // lazy init for first run
-    if (data->current_step < data->min_step) data->current_step = data->min_step;
-    if (data->step_scale <= 0.0f) data->step_scale = 10.0f;
+    if (data->s->current_step < data->min_step) data->s->current_step = data->min_step;
+    if (data->s->step_scale <= 0.0f) data->s->step_scale = 10.0f;
 
     if (e == LV_EVENT_RELEASED)
     {
-        data->repeat_count = 0;
-        data->current_step = data->min_step;
+        data->s->repeat_count = 0;
+        data->s->current_step = data->min_step;
         return;
     }
 
-    data->repeat_count++;
+    data->s->repeat_count++;
 
-    if (data->repeat_count >= 10)
+    if (data->s->repeat_count >= 10)
     {
-        data->repeat_count = 0;
-        data->current_step = fmin(data->current_step * data->step_scale, data->max_step);
+        data->s->repeat_count = 0;
+        data->s->current_step = fmin(data->s->current_step * data->s->step_scale, data->max_step);
     }
 
     float val = *data->val_ref;
 
-    if (key_code == LV_KEY_RIGHT) val = fmin(val + data->current_step, data->max_value);
-    else val = fmax(val - data->current_step, data->min_value);
+    if (key_code == LV_KEY_RIGHT) val = fmin(val + data->s->current_step, data->max_value);
+    else val = fmax(val - data->s->current_step, data->min_value);
 
     *data->val_ref = val;
     data->val_redraw_fn(data);
 }
 
-static void base_redraw_fn(param_data_t * data)
+static void base_redraw_fn(const param_data_t * data)
 {
-    data->buf = "x";
-    etl::to_string(*data->val_ref, data->buf, etl::format_spec().precision(data->precision), true);
-    lv_label_set_text(data->lbl_desc, data->buf.c_str());
+    data->s->buf = "x";
+    etl::to_string(*data->val_ref, data->s->buf, etl::format_spec().precision(data->precision), true);
+    lv_label_set_text(data->s->lbl_desc, data->s->buf.c_str());
 }
 
+static param_data_state_t scale_state = {};
 
-static param_data_t scale = {
+static const param_data_t scale = {
     .val_redraw_fn = &base_redraw_fn,
     .val_update_fn = &base_update_value_fn,
     .val_ref = &app_data.speed_scale,
@@ -71,7 +76,8 @@ static param_data_t scale = {
     .max_value = 9.9f,
     .min_step = 0.1f,
     .max_step = 1.0f,
-    .precision = 1
+    .precision = 1,
+    .s = &scale_state
 };
 
 
@@ -185,7 +191,7 @@ void screen_flow_create()
 
     lv_obj_t * lbl_value = lv_label_create(num_cont, NULL);
     //lv_cont_set_style(lbl_value, LV_CONT_STYLE_MAIN, &app_data.styles.flow_num);
-    scale.lbl_desc = lbl_value;
+    scale.s->lbl_desc = lbl_value;
     scale.val_redraw_fn(&scale);
 
     lv_obj_align(lbl_value, NULL, LV_ALIGN_CENTER, 0, 0);

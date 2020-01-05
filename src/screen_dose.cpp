@@ -1,7 +1,6 @@
 #include "app.h"
 #include "screen_dose.h"
 #include "doses.h"
-#include "etl/to_string.h"
 #include "etl/cyclic_value.h"
 
 
@@ -98,8 +97,9 @@ static void focus_cb(lv_group_t * group)
 {
     if (destroyed) return;
 
-    menu_dose_item_ext_t * ext;
-    ext = (menu_dose_item_ext_t *)lv_obj_get_ext_attr(lv_group_get_focused(group));
+    auto * ext = reinterpret_cast<menu_dose_item_ext_t *>(
+        lv_obj_get_ext_attr(lv_group_get_focused(group))
+    );
 
     if (app_data.dose_volume != ext->volume)
     {
@@ -145,10 +145,6 @@ void screen_dose_create()
 
         if (dose.volume == 0) break;
 
-        // Format volume text
-        etl::to_string(dose.volume, dose.title, etl::format_spec().precision(3));
-        dose.title += " mm³";
-
         //
         // Add container to accept navigation clicks
         //
@@ -166,7 +162,7 @@ void screen_dose_create()
         //
 
         lv_obj_t * lbl_title = lv_label_create(item, NULL);
-        lv_label_set_text(lbl_title, dose.title.c_str());
+        lv_label_set_text(lbl_title, dose.title);
         lv_label_set_style(lbl_title, LV_LABEL_STYLE_MAIN, &app_data.styles.list_title);
         lv_obj_set_pos(lbl_title, 4, 4);
 
