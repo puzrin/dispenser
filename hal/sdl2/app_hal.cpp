@@ -133,8 +133,8 @@ void setup(void)
     monitor_init();
 
     static lv_disp_buf_t disp_buf;
-    static lv_color_t buf[LV_HOR_RES_MAX * 10];
-    lv_disp_buf_init(&disp_buf, buf, NULL, LV_HOR_RES_MAX * 10);
+    static lv_color_t buf[LV_HOR_RES_MAX * 20];
+    lv_disp_buf_init(&disp_buf, buf, NULL, LV_HOR_RES_MAX * 20);
 
     lv_disp_drv_t disp_drv;
     lv_disp_drv_init(&disp_drv);
