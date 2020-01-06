@@ -3,7 +3,6 @@
 #include "etl/to_string.h"
 #include "etl/cyclic_value.h"
 
-#define MAX_DESC_LEN 10
 
 enum setting_type {
     TYPE_NEEDLE_DIA = 0,
@@ -17,14 +16,12 @@ typedef struct {
     float step_scale = 0.0f;
     float current_step = 0.0f;
     uint16_t repeat_count = 0;
-    lv_obj_t * lbl_desc = NULL;
-    char buf[MAX_DESC_LEN];
 } setting_data_state_t;
 
 typedef struct _setting_data {
     enum setting_type const type;
     const char * const title;
-    void (* const val_redraw_fn)(const struct _setting_data * data);
+    const char * (* const val_get_text_fn)(const struct _setting_data * data);
     void (* const val_update_fn)(const struct _setting_data * data, lv_event_t e, int const key_code);
     float * const val_ref;
     const float min_value = 0.0f;
@@ -63,16 +60,14 @@ void base_update_value_fn(const setting_data_t * data, lv_event_t e, int key_cod
     else val = fmax(val - data->s->current_step, data->min_value);
 
     *data->val_ref = val;
-    data->val_redraw_fn(data);
 }
 
-static void base_redraw_fn(const setting_data_t * data)
+static const char * base_get_text_fn(const setting_data_t * data)
 {
-    etl::string<MAX_DESC_LEN-1> tmp;
-    etl::to_string(*data->val_ref, tmp, etl::format_spec().precision(data->precision));
-    tmp += data->suffix;
-    strcpy(data->s->buf, tmp.c_str());
-    lv_label_set_text(data->s->lbl_desc, data->s->buf);
+    static etl::string<10> buf;
+    etl::to_string(*data->val_ref, buf, etl::format_spec().precision(data->precision));
+    buf += data->suffix;
+    return buf.c_str();
 }
 
 
@@ -99,7 +94,7 @@ static setting_data_state_t s_data_syringe_state = {};
 static const setting_data_t s_data_syringe = {
     .type = TYPE_SYRINGE_DIA,
     .title = "Syringe dia",
-    .val_redraw_fn = &base_redraw_fn,
+    .val_get_text_fn = &base_get_text_fn,
     .val_update_fn = &base_update_value_fn,
     .val_ref = &app_data.syringe_dia,
     .min_value = 4.0f,
@@ -117,7 +112,7 @@ static setting_data_state_t s_data_viscosity_state = {};
 static const setting_data_t s_data_viscosity = {
     .type = TYPE_VISCOSITY,
     .title = "Viscosity",
-    .val_redraw_fn = &base_redraw_fn,
+    .val_get_text_fn = &base_get_text_fn,
     .val_update_fn = &base_update_value_fn,
     .val_ref = &app_data.viscosity,
     .min_value = 1.0f,
@@ -135,7 +130,7 @@ static setting_data_state_t s_data_flux_percent_state = {};
 static const setting_data_t s_data_flux_percent = {
     .type = TYPE_FLUX_PERCENT,
     .title = "Flux part",
-    .val_redraw_fn = &base_redraw_fn,
+    .val_get_text_fn = &base_get_text_fn,
     .val_update_fn = &base_update_value_fn,
     .val_ref = &app_data.flux_percent,
     .min_value = 1.0f,
@@ -147,9 +142,9 @@ static const setting_data_t s_data_flux_percent = {
     .s = &s_data_flux_percent_state
 };
 
-static void move_pusher_text_update(const setting_data_t * data)
+static const char * move_pusher_get_text_fn(const setting_data_t * data)
 {
-    lv_label_set_text(data->s->lbl_desc, U_ICON_ARROWS);
+    return U_ICON_ARROWS;
 }
 
 static void pusher_update_value_fn(const setting_data_t * data, lv_event_t e, int key_code)
@@ -164,7 +159,7 @@ static setting_data_state_t s_data_move_pusher_state = {};
 static const setting_data_t s_data_move_pusher = {
     .type = TYPE_MOVE_PUSHER,
     .title = "Fast move",
-    .val_redraw_fn = &move_pusher_text_update,
+    .val_get_text_fn = &move_pusher_get_text_fn,
     .val_update_fn = &pusher_update_value_fn,
     .val_ref = NULL,
     .min_value = 0.0f,
@@ -179,6 +174,51 @@ static const setting_data_t s_data_move_pusher = {
 
 static lv_obj_t * page;
 static bool destroyed = false;
+
+static lv_design_cb_t orig_design_cb;
+
+// Custom drawer to avoid labels create & save RAM.
+static bool list_item_design_cb(lv_obj_t * obj, const lv_area_t * mask_p, lv_design_mode_t mode)
+{
+    auto * s_data = reinterpret_cast<const setting_data_t *>(lv_obj_get_user_data(obj));
+
+    if(mode == LV_DESIGN_DRAW_MAIN)
+    {
+        orig_design_cb(obj, mask_p, mode);
+
+        lv_point_t title_pos = { .x = 4, .y = 4 };
+        lv_draw_label(
+            &obj->coords,
+            mask_p,
+            &app_data.styles.list_title,
+            lv_obj_get_opa_scale(obj),
+            s_data->title,
+            LV_TXT_FLAG_NONE,
+            &title_pos,
+            NULL,
+            NULL,
+            lv_obj_get_base_dir(obj)
+        );
+
+        lv_point_t desc_pos = { .x = 4, .y = 19 };
+        lv_draw_label(
+            &obj->coords,
+            mask_p,
+            &app_data.styles.list_desc,
+            lv_obj_get_opa_scale(obj),
+            s_data->val_get_text_fn(s_data),
+            LV_TXT_FLAG_NONE,
+            &desc_pos,
+            NULL,
+            NULL,
+            lv_obj_get_base_dir(obj)
+        );
+
+        return true;
+    }
+
+    return orig_design_cb(obj, mask_p, mode);
+}
 
 
 static void group_style_mod_cb(lv_group_t * group, lv_style_t * style)
@@ -235,6 +275,7 @@ static void screen_settings_menu_item_cb(lv_obj_t * item, lv_event_t e)
                 case LV_KEY_LEFT:
                 case LV_KEY_RIGHT:
                     s_data->val_update_fn(s_data, e, key_code);
+                    lv_obj_invalidate(item);
                     app_update_settings();
                     return;
             }
@@ -276,39 +317,6 @@ static void screen_settings_menu_item_cb(lv_obj_t * item, lv_event_t e)
     }
 }
 
-
-lv_obj_t * add_setting(const setting_data_t * data)
-{
-    //
-    // Create container & attach user data
-    //
-
-    lv_obj_t * item = lv_cont_create(page, NULL);
-    lv_obj_set_user_data(item, const_cast<setting_data_t *>(data));
-    lv_cont_set_style(item, LV_CONT_STYLE_MAIN, &app_data.styles.main);
-    lv_cont_set_layout(item, LV_LAYOUT_OFF);
-    lv_cont_set_fit2(item, LV_FIT_NONE, LV_FIT_NONE);
-    lv_obj_set_size(item, lv_obj_get_width(page), 37);
-    lv_obj_set_event_cb(item, screen_settings_menu_item_cb);
-    lv_group_add_obj(app_data.group, item);
-
-    //
-    // Add labels
-    //
-
-    lv_obj_t * lbl_title = lv_label_create(item, NULL);
-    lv_label_set_text(lbl_title, data->title);
-    lv_label_set_style(lbl_title, LV_LABEL_STYLE_MAIN, &app_data.styles.list_title);
-    lv_obj_set_pos(lbl_title, 4, 4);
-
-    lv_obj_t * lbl_desc = lv_label_create(item, NULL);
-    data->s->lbl_desc = lbl_desc;
-    data->val_redraw_fn(data);
-    lv_label_set_style(lbl_desc, LV_LABEL_STYLE_MAIN, &app_data.styles.list_desc);
-    lv_obj_set_pos(lbl_desc, 4, 19);
-
-    return item;
-}
 
 void screen_settings_create()
 {
@@ -352,9 +360,26 @@ void screen_settings_create()
 
     for (uint8_t i = 0; s_data_list[i] != NULL; i++)
     {
-        auto * s_data = s_data_list[i];
-        lv_obj_t * item = add_setting(s_data);
-        if (s_data->type == selected_id) selected_item = item;
+        //
+        // Create list item & attach user data
+        //
+
+        auto * data = s_data_list[i];
+
+        lv_obj_t * item = lv_obj_create(page, NULL);
+        lv_obj_set_user_data(item, const_cast<setting_data_t *>(data));
+        lv_obj_set_style(item, &app_data.styles.main);
+        lv_obj_set_size(item, lv_obj_get_width(page), 37);
+        lv_obj_set_event_cb(item, screen_settings_menu_item_cb);
+        lv_group_add_obj(app_data.group, item);
+
+        // We use custom drawer to avoid labels use and reduce RAM comsumption
+        // significantly. Now it's ~ 170 bytes per entry.
+        // Since all callbacks are equal - use the same var to store old ones.
+        orig_design_cb = lv_obj_get_design_cb(item);
+        lv_obj_set_design_cb(item, list_item_design_cb);
+
+        if (data->type == selected_id) selected_item = item;
     }
 
     //

@@ -7,10 +7,51 @@
 static lv_obj_t * page;
 static bool destroyed = true;
 
-typedef struct {
-    lv_cont_ext_t cont;
-    float volume;
-} menu_dose_item_ext_t;
+
+static lv_design_cb_t orig_design_cb;
+
+// Custom drawer to avoid labels create & save RAM.
+static bool list_item_design_cb(lv_obj_t * obj, const lv_area_t * mask_p, lv_design_mode_t mode)
+{
+    auto * dose = reinterpret_cast<dose_t *>(lv_obj_get_user_data(obj));
+
+    if(mode == LV_DESIGN_DRAW_MAIN)
+    {
+        orig_design_cb(obj, mask_p, mode);
+
+        lv_point_t title_pos = { .x = 4, .y = 4 };
+        lv_draw_label(
+            &obj->coords,
+            mask_p,
+            &app_data.styles.list_title,
+            lv_obj_get_opa_scale(obj),
+            dose->title,
+            LV_TXT_FLAG_NONE,
+            &title_pos,
+            NULL,
+            NULL,
+            lv_obj_get_base_dir(obj)
+        );
+
+        lv_point_t desc_pos = { .x = 4, .y = 19 };
+        lv_draw_label(
+            &obj->coords,
+            mask_p,
+            &app_data.styles.list_desc,
+            lv_obj_get_opa_scale(obj),
+            dose->desc,
+            LV_TXT_FLAG_NONE,
+            &desc_pos,
+            NULL,
+            NULL,
+            lv_obj_get_base_dir(obj)
+        );
+
+        return true;
+    }
+
+    return orig_design_cb(obj, mask_p, mode);
+}
 
 
 static void group_style_mod_cb(lv_group_t * group, lv_style_t * style)
@@ -97,13 +138,13 @@ static void focus_cb(lv_group_t * group)
 {
     if (destroyed) return;
 
-    auto * ext = reinterpret_cast<menu_dose_item_ext_t *>(
-        lv_obj_get_ext_attr(lv_group_get_focused(group))
+    auto * dose = reinterpret_cast<dose_t *>(
+        lv_obj_get_user_data(lv_group_get_focused(group))
     );
 
-    if (app_data.dose_volume != ext->volume)
+    if (app_data.dose_volume != dose->volume)
     {
-        app_data.dose_volume = ext->volume;
+        app_data.dose_volume = dose->volume;
         app_update_settings();
     }
 }
@@ -139,48 +180,26 @@ void screen_dose_create()
 
     lv_obj_t * selected_item = NULL;
 
-    for (int i=0;; i++)
+    for (int i=0; doses[i].volume != 0; i++)
     {
-        dose_t dose = doses[i];
-
-        if (dose.volume == 0) break;
-
         //
-        // Add container to accept navigation clicks
+        // Create list item & attach user data
         //
 
-        lv_obj_t * item = lv_cont_create(page, NULL);
-        lv_cont_set_style(item, LV_CONT_STYLE_MAIN, &app_data.styles.list_item);
-        lv_cont_set_layout(item, LV_LAYOUT_OFF);
-        lv_cont_set_fit2(item, LV_FIT_NONE, LV_FIT_NONE);
+        lv_obj_t * item = lv_obj_create(page, NULL);
+        lv_obj_set_user_data(item, const_cast<dose_t *>(&doses[i]));
+        lv_obj_set_style(item, &app_data.styles.list_item);
         lv_obj_set_size(item, lv_obj_get_width(page), 37);
         lv_obj_set_event_cb(item, screen_dose_menu_item_cb);
         lv_group_add_obj(app_data.group, item);
 
-        //
-        // Add texts
-        //
+        // We use custom drawer to avoid labels use and reduce RAM comsumption
+        // significantly. Now it's ~ 170 bytes per entry.
+        // Since all callbacks are equal - use the same var to store old ones.
+        orig_design_cb = lv_obj_get_design_cb(item);
+        lv_obj_set_design_cb(item, list_item_design_cb);
 
-        lv_obj_t * lbl_title = lv_label_create(item, NULL);
-        lv_label_set_text(lbl_title, dose.title);
-        lv_label_set_style(lbl_title, LV_LABEL_STYLE_MAIN, &app_data.styles.list_title);
-        lv_obj_set_pos(lbl_title, 4, 4);
-
-        lv_obj_t * lbl_desc = lv_label_create(item, NULL);
-        lv_label_set_text(lbl_desc, dose.desc);
-        lv_label_set_style(lbl_desc, LV_LABEL_STYLE_MAIN, &app_data.styles.list_desc);
-        lv_obj_set_pos(lbl_desc, 4, 19);
-
-        //
-        // Populate with extended data to simplify navigation
-        //
-        menu_dose_item_ext_t * ext = (menu_dose_item_ext_t *)lv_obj_allocate_ext_attr(
-            item,
-            sizeof(menu_dose_item_ext_t)
-        );
-        ext->volume = dose.volume;
-
-        if (app_data.dose_volume == dose.volume) selected_item = item;
+        if (app_data.dose_volume == doses[i].volume) selected_item = item;
     }
 
     //
