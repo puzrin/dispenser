@@ -71,10 +71,11 @@ static void sysmon_task(lv_task_t * param)
     mem_used_pct = mem_mon.used_pct;
 
     printf(
-        "[Memory] total: %d bytes, free: %d bytes, use: %d%%\n",
+        "[Memory] total: %d bytes, free: %d bytes, use: %d%% (%d)\n",
         (int)mem_mon.total_size,
         (int)mem_mon.free_size,
-        (int)mem_used_pct
+        (int)mem_used_pct,
+        (int)(mem_mon.total_size - mem_mon.free_size)
     );
 }
 #endif
