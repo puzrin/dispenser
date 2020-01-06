@@ -144,6 +144,8 @@ static const setting_data_t s_data_flux_percent = {
 
 static const char * move_pusher_get_text_fn(const setting_data_t * data)
 {
+    (void)data;
+
     return U_ICON_ARROWS;
 }
 
