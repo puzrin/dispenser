@@ -6,6 +6,4 @@
 .vscode/settings.json
 hal/stm32f072cb/stm32cube/.mxproject
 hal/stm32f072cb/stm32cube/Makefile
-hal/stm32f072cb/stm32cube/startup_stm32f072xb.s
-hal/stm32f072cb/stm32cube/STM32F072CBTx_FLASH.ld
 node_modules/
