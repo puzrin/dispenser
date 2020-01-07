@@ -1,8 +1,8 @@
 /**
   ******************************************************************************
-  * File Name          : dma.h
-  * Description        : This file contains all the function prototypes for
-  *                      the dma.c file
+  * File Name          : SYS.c
+  * Description        : This file provides code for the configuration
+  *                      of the SYS instances.
   ******************************************************************************
   * @attention
   *
@@ -16,41 +16,22 @@
   *
   ******************************************************************************
   */
-/* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __dma_H
-#define __dma_H
-
-#ifdef __cplusplus
- extern "C" {
-#endif
 
 /* Includes ------------------------------------------------------------------*/
-#include "main.h"
+#include "sys.h"
 
-/* DMA memory to memory transfer handles -------------------------------------*/
+/* USER CODE BEGIN 0 */
 
-/* USER CODE BEGIN Includes */
+/* USER CODE END 0 */
 
-/* USER CODE END Includes */
+/* SYS init function */
+void MX_SYS_Init(void)
+{
 
-/* USER CODE BEGIN Private defines */
-
-/* USER CODE END Private defines */
-
-void MX_DMA_Init(void);
-
-/* USER CODE BEGIN Prototypes */
-
-/* USER CODE END Prototypes */
-
-#ifdef __cplusplus
 }
-#endif
 
-#endif /* __dma_H */
+/* USER CODE BEGIN 1 */
 
-/**
-  * @}
-  */
+/* USER CODE END 1 */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
