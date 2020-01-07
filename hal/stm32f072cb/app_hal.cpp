@@ -11,8 +11,30 @@
 
 #include "lvgl.h"
 #include "st7735.h"
+#include "stdio_retarget.h"
 
 extern "C" void SystemClock_Config(void);
+
+#if MEM_USE_LOG != 0
+#include "stdio.h"
+static void sysmon_task(lv_task_t * param)
+{
+    (void) param;
+
+    uint8_t mem_used_pct = 0;
+    lv_mem_monitor_t mem_mon;
+    lv_mem_monitor(&mem_mon);
+    mem_used_pct = mem_mon.used_pct;
+
+    printf(
+        "[Memory] total: %d bytes, free: %d bytes, use: %d%% (%d)\r\n",
+        (int)mem_mon.total_size,
+        (int)mem_mon.free_size,
+        (int)mem_used_pct,
+        (int)(mem_mon.total_size - mem_mon.free_size)
+    );
+}
+#endif
 
 namespace hal {
 
@@ -151,6 +173,12 @@ void setup(void)
     MX_ADC_Init();
     MX_TIM7_Init();
     MX_TIM6_Init();
+
+    stdio_retarget_init();
+
+    #if MEM_USE_LOG != 0
+        lv_task_create(sysmon_task, 500, LV_TASK_PRIO_LOW, NULL);
+    #endif
 
     HAL_TIM_Base_Start_IT(&htim6);
     HAL_TIM_Base_Start_IT(&htim7);
