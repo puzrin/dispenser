@@ -66,7 +66,9 @@ typedef int16_t lv_coord_t;
 #define LV_MEM_CUSTOM      0
 #if LV_MEM_CUSTOM == 0
 /* Size of the memory used by `lv_mem_alloc` in bytes (>= 2kB)*/
-#  define LV_MEM_SIZE    (6U * 1024U)
+#ifndef LV_MEM_SIZE
+#  define LV_MEM_SIZE    5000
+#endif
 
 /* Complier prefix for a big array declaration */
 #  define LV_MEM_ATTR
