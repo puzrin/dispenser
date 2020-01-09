@@ -5,26 +5,26 @@
 #include "eeprom_emu.h"
 #include "eeprom_flash_driver.h"
 
-/*
+
 #include <stdio.h>
 
 void mem_dump(EepromEmu<EepromFlashDriver> &eeprom)
 {
-    for (int i = 0; i < eeprom.flash.BankSize; i++)
+    for (uint32_t i = 0; i < eeprom.flash.BankSize; i++)
     {
         printf("0x%.2X ", eeprom.flash.memory[i]);
     }
 
     printf("\n\n");
 
-    for (int i = eeprom.flash.BankSize; i < eeprom.flash.BankSize*2; i++)
+    for (uint32_t i = eeprom.flash.BankSize; i < eeprom.flash.BankSize*2; i++)
     {
         printf("0x%.2X ", eeprom.flash.memory[i]);
     }
 
     printf("\n\n");
 }
-*/
+
 
 void test_eeprom_write() {
     EepromEmu<EepromFlashDriver> eeprom;
@@ -32,9 +32,11 @@ void test_eeprom_write() {
     eeprom.write_u32(3, 0x0000AA99);
     // bank Marker + address + value
     uint8_t expected[] = {
-        0xFF, 0x7F, 0xFF, 0xFF,
-        0x03, 0x20,
-        0x99, 0xAA, 0x00, 0x00
+        0xEE, 0x77, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // Bank header
+        0xAA, 0x55,                 // commit mark
+        0x03, 0x00,                 // addr
+        0x99, 0xAA, 0x00, 0x00,     // data
+        0xFF // free space start
     };
     TEST_ASSERT_EQUAL_HEX8_ARRAY(expected, eeprom.flash.memory, sizeof(expected));
 }
@@ -46,11 +48,14 @@ void test_eeprom_write_over() {
     eeprom.write_u32(3, 0x5577CCEE);
 
     uint8_t expected[] = {
-        0xFF, 0x7F, 0xFF, 0xFF,
-        0x00, 0x00,
-        0x99, 0xAA, 0x00, 0x00,
-        0x03, 0x20,
-        0xEE, 0xCC, 0x77, 0x55
+        0xEE, 0x77, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // Bank header
+        0xAA, 0x55,                 // commit mark
+        0x03, 0x00,                 // addr
+        0x99, 0xAA, 0x00, 0x00,     // data
+        0xAA, 0x55,                 // commit mark
+        0x03, 0x00,                 // addr
+        0xEE, 0xCC, 0x77, 0x55,     // data
+        0xFF // free space start
     };
     TEST_ASSERT_EQUAL_HEX8_ARRAY(expected, eeprom.flash.memory, sizeof(expected));
 }
@@ -59,14 +64,20 @@ void test_eeprom_write_skip_the_same() {
     EepromEmu<EepromFlashDriver> eeprom;
 
     eeprom.write_u32(3, 0x0000AA99);
-    // bank Marker + address + value
-    uint8_t expected[] = {
-        0xFF, 0x7F, 0xFF, 0xFF,
-        0x03, 0x20,
-        0x99, 0xAA, 0x00, 0x00
-    };
-    TEST_ASSERT_EQUAL_HEX8_ARRAY(expected, eeprom.flash.memory, sizeof(expected));
     eeprom.write_u32(3, 0x0000AA99);
+    eeprom.write_u32(3, 0x00000000);
+
+    // Only 2 records should exist (1 old + 1 new)
+    uint8_t expected[] = {
+        0xEE, 0x77, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // Bank header
+        0xAA, 0x55,                 // commit mark
+        0x03, 0x00,                 // addr
+        0x99, 0xAA, 0x00, 0x00,     // data
+        0xAA, 0x55,                 // commit mark
+        0x03, 0x00,                 // addr
+        0x00, 0x00, 0x00, 0x00,     // data
+        0xFF // free space start
+    };
     TEST_ASSERT_EQUAL_HEX8_ARRAY(expected, eeprom.flash.memory, sizeof(expected));
 }
 
@@ -82,21 +93,41 @@ void test_eeprom_read() {
 void test_eeprom_bank_move() {
     EepromEmu<EepromFlashDriver> eeprom;
 
+    uint8_t empty[] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+
     // Fill bank to cause data move to next one
-    uint16_t capacity = (eeprom.flash.BankSize - 4) / 6;
+    uint16_t capacity = (eeprom.flash.BankSize - 8) / 8;
+
+
+    // Prepare first record
+    eeprom.write_u32(7, 0x00000000);
+    capacity--;
+
+    // Occupy all bank memory with second record
     uint32_t data = 0x7777CCCC;
     for (int i = 0; i < capacity; i++)
     {
         eeprom.write_u32(3, data);
         data ^= 0xFFFFFFFF;
     }
+
     // Overflow
     eeprom.write_u32(3, 0x0000AA99);
-    // bank Marker + address + value
+
+    // Old bank should become clean
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(empty, eeprom.flash.memory, sizeof(empty));
+
+    mem_dump(eeprom);
+    // New bank should contain only 2 records
     uint8_t expected[] = {
-        0xFF, 0x7F, 0xFF, 0xFF,
-        0x03, 0x20,
-        0x99, 0xAA, 0x00, 0x00
+        0xEE, 0x77, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // Bank header
+        0xAA, 0x55,                 // commit mark
+        0x07, 0x00,                 // addr
+        0x00, 0x00, 0x00, 0x00,     // data
+        0xAA, 0x55,                 // commit mark
+        0x03, 0x00,                 // addr
+        0x99, 0xAA, 0x00, 0x00,     // data
+        0xFF // free space start
     };
     TEST_ASSERT_EQUAL_HEX8_ARRAY(expected, eeprom.flash.memory + eeprom.flash.BankSize, sizeof(expected));
 }

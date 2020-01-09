@@ -21,48 +21,69 @@ public:
 /*
     Bank structure:
 
-    [ 4 bytes bank marker ] [ 6 bytes record ] [ 6 bytes record ]...
+    [ 8 bytes bank marker ] [ 8 bytes record ] [ 8 bytes record ]...
 
-    Marker: 0x00000000 - bank used (current). 0xFFFFFFFF - bank free
+    Bank Marker:
 
-    Data record: [ 3bit commit flags, 13bit address, 32 bits value ]
+    - [ 0x77EE, 0xFFFF,    0xFFFF, 0xFFFF ] => active, current
+    - [ 0x77EE, NOT_EMPTY, 0xFFFF, 0xFFFF ] => ready to erase (!active)
+    - [ 0xFFFF, 0xFFFF,    0xFFFF, 0xFFFF ] => erased OR on progress of transfer
 
-    Flags:
+    Data record:
 
-    111 xxxxx xxxxxxxx - free to use
-    011 xxxxx xxxxxxxx - write in progress
-    001 xxxxx xxxxxxxx - commited (valid)
-    000 xxxxx xxxxxxxx - stale
+    [ 0x55AA, address_16, data_lo_16, data_hi_16 ]
+
+    2-phase commits used to guarantee data consistency. Commit mark (0x55AA) is
+    stored separate, because many modern flashes use additional ECC bits and not
+    allow old data partial override with zero bits.
+
+    Value 0x55AA at record start means write was completed with success
 */
 
 template <typename FLASH_DRIVER>
 class EepromEmu
 {
-    static const uint16_t STATE_BANK_CLEAR  = 0xFFFF;
-    static const uint16_t STATE_BANK_ACTIVE = 0x7FFF;
-    static const uint16_t STATE_BANK_FULL   = 0x3FFF;
+    enum {
+        EMPTY = 0xFFFF,
+        RECORD_SIZE = 8,
+        BANK_HEADER_SIZE = 8,
+        COMMIT_MARK = 0x55AA,
+        BANK_MARK = 0x77EE,
+        BANK_DIRTY_MARK = 0x5555
+    };
 
     bool initialized = false;
     uint8_t current_bank = 0;
-    uint32_t next_write_offset[2]; // Pointers to free bank areas
+    uint32_t next_write_offset;
 
     bool is_clear(uint8_t bank)
     {
-        for (uint32_t i = 0; i < FLASH_DRIVER::BankSize / 4; i++) {
-            if (flash.read_u16(bank, i*4) != 0xFFFFFFFF) return false;
+        for (uint32_t i = 0; i < FLASH_DRIVER::BankSize; i += 2) {
+            if (flash.read_u16(bank, i) != EMPTY) return false;
         }
         return true;
     }
 
+    bool is_active(uint8_t bank)
+    {
+        if ((flash.read_u16(bank, 0) == BANK_MARK) &&
+            (flash.read_u16(bank, 2) == EMPTY) &&
+            (flash.read_u16(bank, 4) == EMPTY) &&
+            (flash.read_u16(bank, 6) == EMPTY)) return true;
+
+        return false;
+    }
+
     uint32_t find_write_offset()
     {
-        uint32_t ofs = 4;
+        uint32_t ofs = BANK_HEADER_SIZE;
 
-        for (; ofs <= FLASH_DRIVER::BankSize - 6; ofs += 6)
+        for (; ofs <= FLASH_DRIVER::BankSize - RECORD_SIZE; ofs += RECORD_SIZE)
         {
-            if ((flash.read_u16(current_bank, ofs) == 0xFFFF) &&
-                (flash.read_u16(current_bank, ofs + 2) == 0xFFFF) &&
-                (flash.read_u16(current_bank, ofs + 4) == 0xFFFF)) break;
+            if ((flash.read_u16(current_bank, ofs + 0) == EMPTY) &&
+                (flash.read_u16(current_bank, ofs + 2) == EMPTY) &&
+                (flash.read_u16(current_bank, ofs + 4) == EMPTY) &&
+                (flash.read_u16(current_bank, ofs + 6) == EMPTY)) break;
         }
 
         return ofs;
@@ -72,51 +93,56 @@ class EepromEmu
     {
         if (!is_clear(to)) flash.erase(to);
 
-        current_bank = to;
-        next_write_offset[to] = 4;
+        uint32_t dst_end_addr = BANK_HEADER_SIZE;
 
-        // Scan & copy values
-        for (uint32_t ofs = 4; ofs <= FLASH_DRIVER::BankSize - 6; ofs += 6)
+        for (uint32_t ofs = BANK_HEADER_SIZE; ofs < next_write_offset; ofs += RECORD_SIZE)
         {
-            uint16_t head = flash.read_u16(from, ofs);
-            uint16_t addr = head & 0x1FFF;
+            // Skip invalid records
+            if (flash.read_u16(from, ofs + 0) != COMMIT_MARK) continue;
 
-            // End reached => Break
-            if ((head & 0xE000) == 0xE000) break;
-            // Not commit => Skip
-            if ((head & 0xE000) != 0x2000) continue;
+            uint16_t addr = flash.read_u16(from, ofs + 2);
+
             // Skip variable with ignored address
             if (addr == ignore_addr) continue;
 
+            uint16_t lo   = flash.read_u16(from, ofs + 4);
+            uint16_t hi   = flash.read_u16(from, ofs + 6);
 
-            uint16_t lo = flash.read_u16(from, ofs + 2);
-            uint16_t hi = flash.read_u16(from, ofs + 4);
-            uint32_t val = (hi << 16) | lo;
+            bool more_fresh_exists = false;
 
-            // Scan next records and check for more fresh
-            for (uint32_t final_ofs = ofs + 6; final_ofs <= FLASH_DRIVER::BankSize - 6; final_ofs += 6)
+            // Check if more fresh record exists
+            for (uint32_t i = ofs + RECORD_SIZE; i < next_write_offset; i += RECORD_SIZE)
             {
-                uint16_t new_head = flash.read_u16(from, final_ofs);
+                // Skip invalid records
+                if (flash.read_u16(from, i + 0) != COMMIT_MARK) continue;
 
-                // End reached => nothing to search
-                if ((new_head & 0xE000) == 0xE000) break;
-                // Not commit => skip
-                if ((new_head & 0xE000) != 0x2000) continue;
-                // Different address => skip
-                if ((new_head & 0x1FFF) != addr) continue;
+                // Skip different addresses
+                if (flash.read_u16(from, i + 2) != addr) continue;
 
-                // More fresh value found => update
-                lo = flash.read_u16(from, ofs + 2);
-                hi = flash.read_u16(from, ofs + 4);
-                val = (hi << 16) | lo;
+                // More fresh (=> already copied) found
+                more_fresh_exists = true;
+                break;
             }
 
-            // Write found variable to new bank
-            write_bank_u32(to, addr, val);
+            if (more_fresh_exists) continue;
+
+            flash.write_u16(to, dst_end_addr + 2, addr);
+            flash.write_u16(to, dst_end_addr + 4, lo);
+            flash.write_u16(to, dst_end_addr + 6, hi);
+            flash.write_u16(to, dst_end_addr + 0, COMMIT_MARK);
+            dst_end_addr += RECORD_SIZE;
         }
 
-        // Mark new bank active and erase previous
-        flash.write_u16(to, 0, STATE_BANK_ACTIVE);
+        // Mark new bank active
+        flash.write_u16(to, 0, BANK_MARK);
+
+        current_bank = to;
+        next_write_offset = dst_end_addr;
+
+        // Clean old bank in 2 steps to avoid UB: destroy header & run erase
+        flash.write_u16(from, 2, BANK_DIRTY_MARK);
+        flash.write_u16(from, 4, BANK_DIRTY_MARK);
+        flash.write_u16(from, 6, BANK_DIRTY_MARK);
         flash.erase(from);
     }
 
@@ -124,123 +150,18 @@ class EepromEmu
     {
         initialized = true;
 
-        uint16_t state0 = flash.read_u16(0, 0);
-        uint16_t state1 = flash.read_u16(1, 0);
-
-        switch (state0)
+        if (is_active(0)) current_bank = 0;
+        else if (is_active(1)) current_bank = 1;
+        else
         {
-        case STATE_BANK_ACTIVE:
+            // Both banks have no valid markers => prepare first one
+            if (!is_clear(0)) flash.erase(0);
+            flash.write_u16(0, 0, BANK_MARK);
             current_bank = 0;
-            next_write_offset[0] = find_write_offset();
-            if (state1 != STATE_BANK_CLEAR) flash.erase(current_bank ^ 1);
-            return;
-
-        case STATE_BANK_FULL:
-            move_bank(0, 1);
-            return;
-
-        case STATE_BANK_CLEAR:
-            switch (state1)
-            {
-            case STATE_BANK_CLEAR:
-                // Both clear, format 0 & select it
-
-                // Make sure all block clear
-                if (!is_clear(0)) flash.erase(0);
-
-                flash.write_u16(0, 0, STATE_BANK_ACTIVE);
-                current_bank = 0;
-                next_write_offset[0] = find_write_offset();
-                return;
-
-            case STATE_BANK_ACTIVE:
-                current_bank = 1;
-                next_write_offset[1] = find_write_offset();
-                return;
-
-            case STATE_BANK_FULL:
-                move_bank(1, 0);
-                return;
-
-            default:
-                // Broken bank 1 data
-                flash.erase(1);
-                init();
-                return;
-            }
-            return;
-
-        default:
-            // Broken bank 0 data
-            flash.erase(0);
-            init();
-            return;
-        }
-    }
-
-    uint32_t read_bank_u32(uint8_t bank, uint16_t addr, uint32_t dflt)
-    {
-        if (!initialized) init();
-
-        uint32_t result = dflt;
-
-        for (uint32_t ofs = 4; ofs <= FLASH_DRIVER::BankSize - 6; ofs += 6)
-        {
-            uint16_t head = flash.read_u16(bank, ofs);
-            uint16_t lo = flash.read_u16(bank, ofs + 2);
-            uint16_t hi = flash.read_u16(bank, ofs + 4);
-
-            // Reached free space => stop
-            if (head == 0xFFFF && lo == 0xFFFF && hi == 0xFFFF) break;
-
-            // If marker flags are 001 xxxxx xxxxxxxxx => data valid,
-            // update result if address match
-            if ((head & (0xE000)) != 0x2000) continue;
-            if ((head & 0x1FFF) != addr) continue;
-
-            result = (hi << 16) + lo;
         }
 
-        return result;
-    }
-
-    void write_bank_u32(uint8_t bank, uint16_t addr, uint32_t val)
-    {
-        if (!initialized) init();
-
-        uint32_t previous = read_bank_u32(bank, addr, val+1);
-        if (previous == val) return;
-
-        // Check free space and swap banks if needed
-        if (next_write_offset[bank] + 6 > FLASH_DRIVER::BankSize)
-        {
-            move_bank(bank, bank ^ 1, addr);
-            bank ^= 1;
-        }
-
-        // Reset first flag, mark recored occupied
-        flash.write_u16(bank, next_write_offset[bank], 0x7FFF);
-
-        // Write data
-        flash.write_u16(bank, next_write_offset[bank] + 2, val & 0xFFFF);
-        flash.write_u16(bank, next_write_offset[bank] + 4, (uint16_t)(val >> 16) & 0xFFFF);
-
-        // Write address (with existing flags state '011x xxxx xxxx xxxx')
-        flash.write_u16(bank, next_write_offset[bank], addr | 0x6000);
-
-        // Write second commit flag '001x xxxx xxxx xxxx'
-        flash.write_u16(bank, next_write_offset[bank], addr | 0x2000);
-
-        next_write_offset[bank] += 6;
-
-        // Search previous records and mark those stale
-        for (uint32_t ofs = 4; ofs < next_write_offset[bank]-6; ofs += 6)
-        {
-            if ((flash.read_u16(bank, ofs) & 0x1FFF) == addr)
-            {
-                flash.write_u16(bank, ofs, 0);
-            }
-        }
+        next_write_offset = find_write_offset();
+        return;
     }
 
 public:
@@ -248,12 +169,50 @@ public:
 
     uint32_t read_u32(uint16_t addr, uint32_t dflt)
     {
-        return read_bank_u32(current_bank, addr, dflt);
+        if (!initialized) init();
+
+        // Reverse scan, stop on first valid
+        for (uint32_t ofs = next_write_offset;;)
+        {
+            if (ofs <= BANK_HEADER_SIZE) break;
+
+            ofs -= RECORD_SIZE;
+
+            if (flash.read_u16(current_bank, ofs + 0) != COMMIT_MARK) continue;
+            if (flash.read_u16(current_bank, ofs + 2) != addr) continue;
+
+            uint16_t lo = flash.read_u16(current_bank, ofs + 4);
+            uint16_t hi = flash.read_u16(current_bank, ofs + 6);
+
+            return (hi << 16) + lo;
+        }
+
+        return dflt;
     }
 
     void write_u32(uint16_t addr, uint32_t val)
     {
-        write_bank_u32(current_bank, addr, val);
+        if (!initialized) init();
+
+        uint8_t bank = current_bank;
+
+        // Don't write the same value
+        uint32_t previous = read_u32(addr, val+1);
+        if (previous == val) return;
+
+        // Check free space and swap banks if needed
+        if (next_write_offset + RECORD_SIZE > FLASH_DRIVER::BankSize)
+        {
+            move_bank(bank, bank ^ 1, addr);
+            bank ^= 1;
+        }
+
+        // Write data
+        flash.write_u16(bank, next_write_offset + 2, addr);
+        flash.write_u16(bank, next_write_offset + 4, val & 0xFFFF);
+        flash.write_u16(bank, next_write_offset + 6, (uint16_t)(val >> 16) & 0xFFFF);
+        flash.write_u16(bank, next_write_offset + 0, COMMIT_MARK);
+        next_write_offset += RECORD_SIZE;
     }
 
     float read_float(uint16_t addr, float dflt)
