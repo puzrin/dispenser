@@ -231,6 +231,7 @@ void screen_dose_destroy()
     destroyed = true;
     app_data.screen_dose_scroll_pos = lv_obj_get_y(lv_page_get_scrl(page));
     lv_group_set_focus_cb(app_data.group, NULL);
+    lv_group_set_style_mod_cb(app_data.group, NULL);
     lv_group_remove_all_objs(app_data.group);
     lv_obj_clean(lv_scr_act());
 }

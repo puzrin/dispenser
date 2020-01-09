@@ -145,9 +145,18 @@ static void screen_flow_menu_item_cb(lv_obj_t * item, lv_event_t e)
 }
 
 
+static void group_style_mod_cb(lv_group_t * group, lv_style_t * style)
+{
+    // Dummy handler, just to override lvgl's default preset
+    (void)group; (void)style;
+}
+
+
 void screen_flow_create()
 {
     lv_obj_t * screen = lv_scr_act();
+
+    lv_group_set_style_mod_cb(app_data.group, group_style_mod_cb);
 
     lv_obj_t * mode_label = lv_label_create(screen, NULL);
     lv_label_set_style(mode_label, LV_LABEL_STYLE_MAIN, &app_data.styles.header_icon);
@@ -157,7 +166,6 @@ void screen_flow_create()
 
     cont = lv_cont_create(screen, NULL);
     lv_cont_set_style(cont, LV_CONT_STYLE_MAIN, &app_data.styles.main);
-    //lv_cont_set_layout(cont, LV_LAYOUT_COL_M);
     lv_obj_set_pos(cont, 0, 50);
     lv_obj_set_size(cont,
         lv_obj_get_width(screen),
@@ -185,19 +193,16 @@ void screen_flow_create()
     lv_obj_align(num_cont, NULL, LV_ALIGN_IN_TOP_MID, 0, 38);
 
     lv_obj_t * lbl_left = lv_label_create(num_cont, NULL);
-    //lv_cont_set_style(lbl_left, LV_CONT_STYLE_MAIN, &app_data.styles.flow_num);
     lv_label_set_text(lbl_left, U_ICON_LEFT);
     lv_obj_align(lbl_left, NULL, LV_ALIGN_IN_LEFT_MID, 0, -1);
 
     lv_obj_t * lbl_value = lv_label_create(num_cont, NULL);
-    //lv_cont_set_style(lbl_value, LV_CONT_STYLE_MAIN, &app_data.styles.flow_num);
     scale.s->lbl_desc = lbl_value;
     scale.val_redraw_fn(&scale);
 
     lv_obj_align(lbl_value, NULL, LV_ALIGN_CENTER, 0, 0);
 
     lv_obj_t * lbl_right = lv_label_create(num_cont, NULL);
-    //lv_cont_set_style(lbl_right, LV_CONT_STYLE_MAIN, &app_data.styles.flow_num);
     lv_label_set_text(lbl_right, U_ICON_RIGHT);
     lv_obj_align(lbl_right, NULL, LV_ALIGN_IN_RIGHT_MID, 0, -1);
 
@@ -214,6 +219,7 @@ void screen_flow_destroy()
     if (destroyed) return;
     destroyed = true;
     lv_group_set_focus_cb(app_data.group, NULL);
+    lv_group_set_style_mod_cb(app_data.group, NULL);
     lv_group_remove_all_objs(app_data.group);
     lv_obj_clean(lv_scr_act());
 }

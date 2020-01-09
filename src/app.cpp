@@ -39,7 +39,7 @@ static void load_settings()
     app_data.syringe_dia    = eeprom.read_float(ADDR_SYRINGE_DIA, 15.0f);
     app_data.viscosity      = eeprom.read_float(ADDR_VISCOSITY, 1.0);
     app_data.flux_percent   = eeprom.read_float(ADDR_FLUX_PERCENT, 10.0f);
-    app_data.dose_volume    = eeprom.read_float(ADDR_DOSE_VOLUME, doses[2].volume);
+    app_data.dose_volume    = eeprom.read_float(ADDR_DOSE_VOLUME, doses[0].volume);
     app_data.speed_scale    = eeprom.read_float(ADDR_SPEED_SCALE, 1.0f);
     app_data.flow_mode      = (bool)eeprom.read_u32(ADDR_FLOW_MODE, 0);
     app_data.lcd_brightness = (uint8_t)eeprom.read_u32(ADDR_LCD_BRIGHTNESS, 100);
@@ -47,14 +47,6 @@ static void load_settings()
 
 static void save_settings()
 {
-    /*printf("needle_dia = %f\n", app_data.needle_dia);
-    printf("syringe_dia = %f\n", app_data.syringe_dia);
-    printf("viscosity = %f\n", app_data.viscosity);
-    printf("flux_percent = %f\n", app_data.flux_percent);
-    printf("dose_volume = %f\n", app_data.dose_volume);
-    printf("speed_scale = %f\n", app_data.speed_scale);
-    printf("flow_mode = %d\n",(int)app_data.flow_mode);*/
-
     eeprom.write_float(ADDR_NEEDLE_DIA, app_data.needle_dia);
     eeprom.write_float(ADDR_SYRINGE_DIA, app_data.syringe_dia);
     eeprom.write_float(ADDR_VISCOSITY,app_data.viscosity);

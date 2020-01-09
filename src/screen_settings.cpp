@@ -414,6 +414,7 @@ void screen_settings_destroy()
     app_data.screen_settings_selected_id = s_data->type;
 
     lv_group_set_focus_cb(app_data.group, NULL);
+    lv_group_set_style_mod_cb(app_data.group, NULL);
     lv_group_remove_all_objs(app_data.group);
     lv_obj_clean(lv_scr_act());
 }
