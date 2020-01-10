@@ -8,7 +8,7 @@
 
 #include <stdio.h>
 
-void mem_dump(EepromEmu<EepromFlashDriver> &eeprom)
+/*void mem_dump(EepromEmu<EepromFlashDriver> &eeprom)
 {
     for (uint32_t i = 0; i < eeprom.flash.BankSize; i++)
     {
@@ -23,7 +23,7 @@ void mem_dump(EepromEmu<EepromFlashDriver> &eeprom)
     }
 
     printf("\n\n");
-}
+}*/
 
 
 void test_eeprom_write() {
@@ -117,7 +117,6 @@ void test_eeprom_bank_move() {
     // Old bank should become clean
     TEST_ASSERT_EQUAL_HEX8_ARRAY(empty, eeprom.flash.memory, sizeof(empty));
 
-    mem_dump(eeprom);
     // New bank should contain only 2 records
     uint8_t expected[] = {
         0xEE, 0x77, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // Bank header
