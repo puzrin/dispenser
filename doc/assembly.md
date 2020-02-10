@@ -4,7 +4,7 @@ Device assembly <!-- omit in toc -->
 - [Required components](#required-components)
 - [PCB assembly](#pcb-assembly)
 - [Firmware upload](#firmware-upload)
-- [Motor &amp; syringe mount](#motor-amp-syringe-mount)
+- [Motor & syringe mount](#motor--syringe-mount)
 - [Needle caps](#needle-caps)
 - [The end :)](#the-end)
 
@@ -20,7 +20,7 @@ paste, low temp paste, flux).
 2 | [0.96" IPS Display](https://www.aliexpress.com/item/32861823719.html) |
 3 | [Micro stepper motor](https://www.aliexpress.com/item/32979960185.html) | Other motors will need rework of 3d-printed supports.
 4 | [Gearbox 1:300+ with long shaft](https://www.aliexpress.com/item/32987637967.html) | For max gear ratio select lowest RPM.
-5 | [Transparent heat shrink tube 18mm](https://www.aliexpress.com/item/32791427710.html) | Display mount.
+5 | [PVC transparent heat shrink tube 23mm](https://aliexpress.ru/item/32787322976.html) | Display mount.
 6 | [Double side foam tape, 15*1mm](https://www.aliexpress.com/item/33050888785.html) | Display mount.
 6 | [22 AWG wire](https://www.aliexpress.com/item/32854919883.html) | SMT stencil positioning & motor/syringe supports mount.
 7 | [Heat shrink tube 35mm](https://www.aliexpress.com/item/32791427710.html) | Motor mount / electronics protection.
@@ -67,15 +67,14 @@ Now mount LCD to PCB:
 
 - Use double side foam tape. Stick to LCD first, then cut borders, then stick
   to PCB
-- Fit heat shrink tube over that. You need 40-42mm of 18mm-wide tube. Center it
-  over LCD, then shrink back side, then front side.
+- Fit heat shrink tube over that. You need 40mm of 23mm-wide tube. Center it
+  over LCD, then shrink sides, front and back.
 
 ![](images/dispenser_lcd_mount.jpg)
 
-Don't worry about small air bubbles between heat shrink tube and screen surface,
-those will not affect image quality anyhow. It's possible to use special
-UV-activated glue for displays to avoid air gaps. But that does not worth
-efforts been spent.
+Don't worry about small air bubbles at screen surface, those will not affect
+image quality anyhow. It's possible to use special UV-activated glue for
+displays to avoid air gaps. But that does not worth efforts been spent.
 
 Assembled PCB with power on:
 
