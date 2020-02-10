@@ -25,8 +25,8 @@ paste, low temp paste, flux).
 6 | [22 AWG wire](https://www.aliexpress.com/item/32854919883.html) | SMT stencil positioning & motor/syringe supports mount.
 7 | [Heat shrink tube 35mm](https://www.aliexpress.com/item/32791427710.html) | Motor mount / electronics protection.
 8 | [Cable ties 150-200mm](https://www.aliexpress.com/item/32807062474.html) | Syringe mount. 100mm enough for all syringes except 10cc. Width 2.5-3.0mm.
-9 | [Heat shrink tube 1.0mm, 1.5mm, 2.0mm](https://www.aliexpress.com/item/32859645890.html) | Needle caps, inner layer.
-10 | [Heat shrink tube 1:3 with glue, 2.4mm, 3.2mm](https://www.aliexpress.com/item/32859645890.html) | Needle caps, outer layer.
+9 | [Silicone heat shrink tube 0.8mm, 1.0mm, 1.5mm](https://atopelec.aliexpress.com/store/group/Silicone-Heat-Shrink-Tubing/118669_505069419.html) | Needle caps, inner layer.
+10 | [Heat shrink tube 1:4 with glue, 4mm](https://www.aliexpress.com/item/32787521306.html) | Needle caps, outer layer.
 11 | [Syringes](https://www.aliexpress.com/item/32920861566.html) | 1cc recommended for soldering paste with max precision. 3cc - acceptable. 10cc - for fluxes when precision not critical, and for refill.
 12 | [Needles](https://www.aliexpress.com/item/32256297497.html) | Needles choice from syringe set is too small. Buy separate set.
 13 | [Micro USB silicon cable](https://www.aliexpress.com/item/32858516897.html) | Very soft cable strongly advised for convenience.
@@ -112,16 +112,15 @@ TBD
 It's important to protect soldering paste from drying while not used. Here is
 simple recipe of needle caps. You will need 2 heat shrink tubes:
 
-- Small tube, 1.5mm with 1:3 ratio
-- Bigger tube, 3mm, with glue layer & 1:3 ratio
+- Small silicone tube. They have small shrink ratio (1.7:1 only), so buy several
+  sizes to fit all 0.8/1.0/1.5mm.
+- Bigger tube, 4mm, with glue layer & 1:4 ratio.
 
-First, shrink small tube to needle and cut it at needle end. Then shrink bigger
-one and squeeze the end. See result:
+First, shrink 10mm of silicone tube at needle edge. Then shrink 15-20mm of
+bigger tube and squeeze the end. Take off and cut the ends for accurate look.
+See result:
 
 [![Needle caps](images/needle_caps.jpg)](images/needle_caps.jpg)
-
-Optionally, add a drop of glycerol for additional safety. You can vary approach,
-use 1:2 ratio tubes and so on. But principle is the same.
 
 
 ## The end :)
