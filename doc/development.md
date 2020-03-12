@@ -14,13 +14,19 @@ SDL2 and was tested with Ubuntu 18.04LTS.
 For dependencies install:
 
 ```sh
-sudo apt-get install libsdl2-dev
+sudo apt-get install gcc-multilib g++-multilib libsdl2-dev:i386
 ```
 
-To build, via PlatformIO menu: `Terminal` -> `Run Build Task` ->
-`PlatformIO: Build (emulator)`.
+Notes:
 
-To execute, run from console `.pio/build/emulator/program`.
+- We recommend use 32-bits build for more relevant memory usage stats.
+- If you have conflicts on `libsdl2-dev:i386` install, remove 64-bits lib &
+  dependencies first.
+- If you prefer 64-bits build - comment out `-m32` option in `platformio.ini`.
+
+
+To build & execute, via PlatformIO menu: `Terminal` -> `Run Build Task` ->
+`PlatformIO: Execute (emulator)`.
 
 
 ## Messaging via USB Serial

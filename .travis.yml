@@ -5,13 +5,9 @@ python:
 cache:
   directories:
     - "~/.platformio"
-addons:
-  apt:
-    packages:
-      - libsdl2-dev
-#before_install:
-#  - sudo apt-get update
-#  - sudo apt-get install libsdl2-dev
+before_install:
+  - sudo apt-get update
+  - sudo apt-get install gcc-multilib g++-multilib libsdl2-dev:i386
 install:
   - pip install -U platformio
   - platformio update
