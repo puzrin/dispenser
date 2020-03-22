@@ -4,6 +4,6 @@
 .vscode/launch.json
 .vscode/ipch
 .vscode/settings.json
-hal/stm32f072cb/stm32cube/.mxproject
-hal/stm32f072cb/stm32cube/Makefile
+hal/**/.mxproject
+hal/**/Makefile
 node_modules/
