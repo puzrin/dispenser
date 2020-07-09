@@ -1,7 +1,7 @@
 SMT solder paste and flux dispenser
 ===================================
 
-[![Build Status](https://travis-ci.org/puzrin/dispenser.svg)](https://travis-ci.org/puzrin/dispenser)
+[![CI](https://github.com/puzrin/dispenser/workflows/CI/badge.svg?branch=master)](https://github.com/puzrin/dispenser/actions)
 [![Gitter](https://badges.gitter.im/paste_dispenser/community.svg)](https://gitter.im/paste_dispenser/community)
 
 **WIP**
