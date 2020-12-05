@@ -6,7 +6,7 @@ Device assembly <!-- omit in toc -->
 - [Firmware upload](#firmware-upload)
 - [Motor & syringe mount](#motor--syringe-mount)
 - [Needle caps](#needle-caps)
-- [The end :)](#the-end)
+- [The end :)](#the-end-)
 
 
 ## Required components
@@ -27,9 +27,10 @@ paste, low temp paste, flux).
 8 | [Cable ties 150-200mm](https://www.aliexpress.com/item/32807062474.html) | Syringe mount. 100mm enough for all syringes except 10cc. Width 2.5-3.0mm.
 9 | [Silicone heat shrink tube 0.8mm, 1.0mm, 1.5mm](https://atopelec.aliexpress.com/store/group/Silicone-Heat-Shrink-Tubing/118669_505069419.html) | Needle caps, inner layer.
 10 | [Heat shrink tube 1:4 with glue, 4mm](https://www.aliexpress.com/item/32787521306.html) | Needle caps, outer layer.
-11 | [Syringes](https://www.aliexpress.com/item/32920861566.html) | 1cc recommended for soldering paste with max precision. 3cc - acceptable. 10cc - for fluxes when precision not critical, and for refill.
-12 | [Needles](https://www.aliexpress.com/item/32256297497.html) | Needles choice from syringe set is too small. Buy separate set.
-13 | [Micro USB silicon cable](https://www.aliexpress.com/item/32858516897.html) | Very soft cable strongly advised for convenience.
+11 | [Joysick cap, 2mm](https://www.aliexpress.com/item/4000005913318.html) | Optional, but recommended.
+12 | [Syringes](https://www.aliexpress.com/item/32920861566.html) | 1cc recommended for soldering paste with max precision. 3cc - acceptable. 10cc - for fluxes when precision not critical, and for refill.
+13 | [Needles](https://www.aliexpress.com/item/32256297497.html) | Needles choice from syringe set is too small. Buy separate set.
+14 | [Micro USB silicon cable](https://www.aliexpress.com/item/32858516897.html) | Very soft cable strongly advised for convenience.
 
 Note. You are strongly advised to order SMT stencil for your PCB. That will
 add ~ 8$ in total to your order - good price for convenience. On placing stencil
