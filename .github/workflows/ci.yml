@@ -18,13 +18,13 @@ jobs:
 
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v1
-        
+
       - name: Install PlatformIO
         run: |
           python -m pip install --upgrade pip
           pip install -U platformio
           platformio update
-      
+
       - name: Build bare metal
         run: platformio run -e hardware_usb
 
@@ -40,43 +40,19 @@ jobs:
 
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v1
-        
+
       - name: Install PlatformIO
         run: |
           python -m pip install --upgrade pip
           pip install -U platformio
           platformio update
-      
+
       - name: Build bare metal
         run: platformio run -e hardware_usb
-
-      #- name: Setup GCC
-      #  run: |
-      #    cd /usr/local/bin
-      #    ln -s gcc-9 gcc
-      #    ln -s g++-9 g++
-      #    gcc --version
-      #  #  ln -s gcc-ar-9 ar
-      #  #  ln -s gcc-ranlib-9 ranlib
-
-      #- name: Build desktop
-      #  env:
-      #    PLATFORMIO_BUILD_FLAGS: '-I/usr/local/include -L/usr/local/lib'
-      #  run: platformio run -e emulator
 
   Windows:
     runs-on: windows-latest
     steps:
-      - name: Activate msys2 & mingw64
-        run: |
-          echo "::add-path::C:/msys64/usr/bin"
-          echo "::add-path::C:/msys64/mingw64/bin"
-
-      - name: Install deps
-        run: |
-          pacman --noconfirm -S --needed mingw-w64-x86_64-SDL2
-          gcc --version
-
       - uses: actions/checkout@v2
       #- uses: actions/setup-python@v1
 
@@ -88,6 +64,3 @@ jobs:
 
       - name: Build bare metal
         run: platformio run -e hardware_usb
-
-      - name: Build desktop
-        run: platformio run -e emulator
