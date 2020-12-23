@@ -12,9 +12,7 @@ jobs:
     steps:
       - name: Install Linux dependencies
         run: |
-          sudo dpkg --add-architecture i386
-          sudo apt-get update
-          sudo apt-get install libsdl2-dev:i386 gcc-multilib g++-multilib
+          sudo apt-get install libsdl2-dev
 
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v1
