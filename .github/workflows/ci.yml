@@ -49,9 +49,23 @@ jobs:
       - name: Build bare metal
         run: platformio run -e hardware_usb
 
+      # PIO uses old gcc on OSX for 'native', and ETL fails to build
+      #- name: Build desktop
+      #  run: platformio run -e emulator
+
   Windows:
     runs-on: windows-latest
     steps:
+      - name: Activate msys2 & mingw64
+        run: |
+          echo "C:\msys64\usr\bin" >> $env:GITHUB_PATH
+          echo "C:\msys64\mingw64\bin" >> $env:GITHUB_PATH
+
+      - name: Install deps
+        run: |
+          pacman --noconfirm -S --needed mingw-w64-x86_64-SDL2
+          gcc --version
+
       - uses: actions/checkout@v2
       #- uses: actions/setup-python@v1
 
@@ -63,3 +77,6 @@ jobs:
 
       - name: Build bare metal
         run: platformio run -e hardware_usb
+
+      - name: Build desktop
+        run: platformio run -e emulator
